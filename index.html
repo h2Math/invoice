@@ -1,0 +1,867 @@
+Here is an HTML document that creates a student billing app where every session now includes start and end times, and invoices clearly display them for both hourly and per-session rate types.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Tutor Pro · Session Times for ALL Rates (Invoice Ready)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', sans-serif;
+        }
+        body {
+            background: #eef2f7;
+            margin: 0;
+            padding: 20px;
+            color: #1a2c3e;
+        }
+        .app-container {
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+        .dashboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+        .calendar-panel {
+            flex: 2.2;
+            min-width: 300px;
+            background: white;
+            border-radius: 36px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            padding: 20px;
+        }
+        .students-panel {
+            flex: 1.3;
+            min-width: 280px;
+            background: white;
+            border-radius: 36px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .app-header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        h1 {
+            font-size: 1.7rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1f6392, #2b9e6e);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin: 0;
+        }
+        .badge-note {
+            background: #eef2ff;
+            padding: 6px 14px;
+            border-radius: 60px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .calendar-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .month-year {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .nav-buttons button {
+            background: #f0f2f5;
+            border: none;
+            font-size: 1.2rem;
+            padding: 6px 14px;
+            border-radius: 40px;
+            margin: 0 4px;
+            cursor: pointer;
+        }
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-weight: 600;
+            color: #4a627a;
+            margin-bottom: 8px;
+        }
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+        .day-cell {
+            background: #fafcff;
+            border-radius: 20px;
+            padding: 8px 4px;
+            text-align: center;
+            font-weight: 500;
+            border: 1px solid #e2edf2;
+            cursor: pointer;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: 0.1s;
+        }
+        .day-cell.empty {
+            background: #f8fafc;
+            color: #b9c8e8;
+            cursor: default;
+        }
+        .day-number {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .session-indicators {
+            font-size: 9px;
+            margin-top: 4px;
+            background: #eef2fa;
+            padding: 2px 6px;
+            border-radius: 30px;
+            width: 90%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .day-cell.selected {
+            background: #e0f0fe;
+            border: 2px solid #1f6392;
+        }
+        .student-list {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 400px;
+            margin: 16px 0;
+        }
+        .student-card {
+            background: #f9fbfd;
+            border-radius: 24px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-left: 5px solid #2b9e6e;
+            transition: 0.1s;
+        }
+        .student-name {
+            font-weight: 700;
+            font-size: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .student-detail {
+            font-size: 0.7rem;
+            color: #3a5a78;
+            margin: 6px 0;
+        }
+        .student-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+        button.small {
+            background: none;
+            border: none;
+            background: #eef2fa;
+            padding: 4px 12px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+        .add-student-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 16px;
+            border-top: 1px solid #dfe8ef;
+            padding-top: 16px;
+        }
+        input, select {
+            padding: 10px 12px;
+            border-radius: 40px;
+            border: 1px solid #ccdde9;
+            font-size: 0.9rem;
+            background: white;
+        }
+        .primary {
+            background: #1f6392;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .fee-summary {
+            margin-top: 16px;
+            background: #eef6f0;
+            padding: 12px;
+            border-radius: 24px;
+            font-size: 0.85rem;
+        }
+        .print-invoice-btn {
+            background: #2b9e6e;
+            width: 100%;
+            margin-top: 12px;
+        }
+        hr {
+            margin: 16px 0;
+        }
+        .selected-info {
+            background: #eef2fa;
+            border-radius: 24px;
+            padding: 10px;
+            font-size: 0.75rem;
+            margin-bottom: 12px;
+        }
+        .global-rate-tool {
+            background: #f9fafc;
+            border-radius: 28px;
+            padding: 12px;
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .time-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-card {
+            background: white;
+            border-radius: 48px;
+            padding: 24px;
+            width: 90%;
+            max-width: 440px;
+            box-shadow: 0 25px 40px rgba(0,0,0,0.2);
+        }
+        .time-input-group {
+            display: flex;
+            gap: 12px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .time-input-group label {
+            font-weight: 600;
+            width: 80px;
+        }
+        .rate-type-group {
+            display: flex;
+            gap: 16px;
+            margin: 16px 0;
+            background: #f2f4f8;
+            padding: 10px;
+            border-radius: 60px;
+        }
+        .rate-type-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+        @media (max-width: 780px) {
+            body { padding: 12px; }
+            .day-cell { min-height: 70px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="app-header">
+        <h1>⏱️ UniRate · Start & End Time for ALL sessions</h1>
+        <div class="badge-note">📋 Every session includes time range — invoice ready</div>
+    </div>
+    <div class="dashboard">
+        <div class="calendar-panel">
+            <div class="calendar-nav">
+                <button id="prevMonthBtn" class="nav-buttons">◀</button>
+                <span id="monthYearLabel" class="month-year">June 2026</span>
+                <button id="nextMonthBtn" class="nav-buttons">▶</button>
+            </div>
+            <div class="weekdays"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+            <div id="calendarGrid" class="calendar-days"></div>
+            <div class="selected-info" id="selectedDateInfo">
+                ✅ Select a student → tap any day → add session (mandatory start + end time)<br>
+                ✨ Choose "Per session (fixed $)" OR "Hourly rate" → BOTH will show time range on invoice.
+            </div>
+            <div class="global-rate-tool">
+                <span style="font-size:0.75rem;">💡 Preset values (prefill modal):</span>
+                <select id="presetTypeSelect">
+                    <option value="perSession">Per Session ($)</option>
+                    <option value="hourly">Hourly ($/hr)</option>
+                </select>
+                <input type="number" id="presetAmountInput" value="45" step="5" style="width:90px;">
+                <button id="applyPresetBtn" class="small">Set default</button>
+            </div>
+        </div>
+
+        <div class="students-panel">
+            <h3>👩‍🎓 Students</h3>
+            <div id="studentsListContainer" class="student-list"></div>
+            <div class="add-student-form">
+                <input type="text" id="newStudentName" placeholder="Student full name" autocomplete="off">
+                <button id="addStudentBtn" class="primary">+ Add student</button>
+            </div>
+            <hr>
+            <div class="fee-summary" id="monthlySummary">
+                <strong>📄 Monthly preview</strong><br>Select a student
+            </div>
+            <button id="printInvoiceBtn" class="primary print-invoice-btn">🖨️ Print invoice (PDF)</button>
+            <p style="font-size: 10px; text-align:center; margin-top:8px;">⏲️ Every session stores start & end time. Invoice shows time range + rate details.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- DATA MODEL ----------
+    let students = [];          // { id, name }
+    // sessions ALWAYS include: id, studentId, dateStr, startTime, endTime, rateType, amount, durationHours
+    let sessions = [];
+    let currentYear = 2026;
+    let currentMonth = 5;      // 0-index (June)
+    let selectedStudentIdForSession = null;
+    
+    // Default preset for new sessions
+    let defaultRateType = "perSession";
+    let defaultAmount = 45;     // $45 per session or $45/hour
+    
+    // Helper: parse "HH:MM" to hours
+    function parseTimeToHours(timeStr) {
+        let [h, m] = timeStr.split(':').map(Number);
+        return h + m / 60;
+    }
+    
+    function computeDuration(start, end) {
+        let startH = parseTimeToHours(start);
+        let endH = parseTimeToHours(end);
+        let duration = endH - startH;
+        return duration > 0 ? duration : 0;
+    }
+    
+    function formatDateKey(year, month, day) {
+        return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+    
+    function getDaysInMonth(year, month) {
+        return new Date(year, month + 1, 0).getDate();
+    }
+    
+    function getFirstDayOfMonthMondayBased(year, month) {
+        let firstDay = new Date(year, month, 1).getDay();
+        return (firstDay === 0) ? 6 : firstDay - 1;
+    }
+    
+    // get sessions for a student in specific month
+    function getStudentSessionsInMonth(studentId, year, month) {
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0);
+        return sessions.filter(s => s.studentId === studentId && new Date(s.dateStr) >= startDate && new Date(s.dateStr) <= endDate);
+    }
+    
+    // Calculate amount for a session (depends on rateType, amount & duration)
+    function getSessionAmount(session) {
+        if (session.rateType === "perSession") {
+            return session.amount;   // fixed fee regardless of duration
+        } else { // hourly
+            let hours = session.durationHours || 0;
+            return hours * session.amount;
+        }
+    }
+    
+    // Total fee for student in month
+    function getStudentTotalFee(studentId, year, month) {
+        const monthSessions = getStudentSessionsInMonth(studentId, year, month);
+        return monthSessions.reduce((sum, sess) => sum + getSessionAmount(sess), 0);
+    }
+    
+    // human readable description (for tooltips and summary)
+    function getSessionDescription(session) {
+        const timeRange = `${session.startTime}–${session.endTime}`;
+        if (session.rateType === "perSession") {
+            return `💵 $${session.amount} flat · ${timeRange}`;
+        } else {
+            return `⏱️ $${session.amount}/hr · ${timeRange} (${session.durationHours.toFixed(2)}h)`;
+        }
+    }
+    
+    // ---------- MODAL: ALWAYS asks for start & end time, plus rate type + amount ----------
+    function showSessionModal(dateStr, studentId, existingSession = null) {
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'time-modal';
+        
+        let startVal = "16:00", endVal = "17:00", rateTypeVal = defaultRateType, amountVal = defaultAmount;
+        if (existingSession) {
+            startVal = existingSession.startTime || "16:00";
+            endVal = existingSession.endTime || "17:00";
+            rateTypeVal = existingSession.rateType;
+            amountVal = existingSession.amount;
+        }
+        
+        modalDiv.innerHTML = `
+            <div class="modal-card">
+                <h3 style="margin:0 0 5px">${existingSession ? '✏️ Edit Session' : '➕ New Session'}</h3>
+                <p><strong>${getStudentNameById(studentId)}</strong> — ${dateStr}</p>
+                <div class="time-input-group">
+                    <label>⏰ Start time:</label>
+                    <input type="time" id="modalStartTime" value="${startVal}" step="60" required>
+                </div>
+                <div class="time-input-group">
+                    <label>⏰ End time:</label>
+                    <input type="time" id="modalEndTime" value="${endVal}" step="60" required>
+                </div>
+                <div class="rate-type-group">
+                    <label style="display:flex; gap:6px;">
+                        <input type="radio" name="rateRadio" value="perSession" ${rateTypeVal === 'perSession' ? 'checked' : ''}> 💰 Per session (fixed $)
+                    </label>
+                    <label style="display:flex; gap:6px;">
+                        <input type="radio" name="rateRadio" value="hourly" ${rateTypeVal === 'hourly' ? 'checked' : ''}> ⏱️ Hourly rate ($/hr)
+                    </label>
+                </div>
+                <div class="time-input-group">
+                    <label>💰 Amount ($):</label>
+                    <input type="number" id="modalAmount" value="${amountVal}" step="5" style="flex:1">
+                </div>
+                <div style="font-size:12px; color:#4f6f8f; margin-top:8px;" id="durationPreview">⏱️ Duration will be calculated automatically.</div>
+                <div style="display:flex; gap:12px; margin-top:20px;">
+                    <button id="modalConfirmBtn" class="primary" style="flex:1">${existingSession ? 'Update' : 'Add'} session</button>
+                    <button id="modalCancelBtn" class="small" style="flex:1">Cancel</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+        
+        const startInput = modalDiv.querySelector('#modalStartTime');
+        const endInput = modalDiv.querySelector('#modalEndTime');
+        const durationSpan = modalDiv.querySelector('#durationPreview');
+        
+        function updateDurationPreview() {
+            const start = startInput.value;
+            const end = endInput.value;
+            if (start && end) {
+                const dur = computeDuration(start, end);
+                if (dur > 0) durationSpan.innerText = `⏱️ Duration: ${dur.toFixed(2)} hours`;
+                else durationSpan.innerText = `⚠️ End time must be after start time`;
+            } else {
+                durationSpan.innerText = `⏱️ Enter start and end time`;
+            }
+        }
+        startInput.addEventListener('change', updateDurationPreview);
+        endInput.addEventListener('change', updateDurationPreview);
+        updateDurationPreview();
+        
+        const radioPerSession = modalDiv.querySelector('input[value="perSession"]');
+        const radioHourly = modalDiv.querySelector('input[value="hourly"]');
+        const amountInput = modalDiv.querySelector('#modalAmount');
+        
+        const confirmBtn = modalDiv.querySelector('#modalConfirmBtn');
+        const cancelBtn = modalDiv.querySelector('#modalCancelBtn');
+        
+        confirmBtn.addEventListener('click', () => {
+            const startTime = startInput.value;
+            const endTime = endInput.value;
+            if (!startTime || !endTime) {
+                alert("Please enter both start and end time (every session needs a time range).");
+                return;
+            }
+            const duration = computeDuration(startTime, endTime);
+            if (duration <= 0) {
+                alert("End time must be after start time.");
+                return;
+            }
+            const selectedRateType = radioPerSession.checked ? "perSession" : "hourly";
+            let amount = parseFloat(amountInput.value);
+            if (isNaN(amount) || amount <= 0) {
+                alert("Enter a valid positive amount ($).");
+                return;
+            }
+            
+            if (existingSession) {
+                // update existing
+                existingSession.startTime = startTime;
+                existingSession.endTime = endTime;
+                existingSession.durationHours = duration;
+                existingSession.rateType = selectedRateType;
+                existingSession.amount = amount;
+            } else {
+                sessions.push({
+                    id: Date.now() + Math.random(),
+                    studentId: studentId,
+                    dateStr: dateStr,
+                    startTime: startTime,
+                    endTime: endTime,
+                    durationHours: duration,
+                    rateType: selectedRateType,
+                    amount: amount
+                });
+            }
+            saveToLocalStorage();
+            renderCalendar();
+            updateMonthlySummaryForSelectedStudent();
+            modalDiv.remove();
+            const msg = existingSession ? "Session updated" : "Session added";
+            showTemporaryMessage(`✅ ${msg} · ${startTime}–${endTime} · ${selectedRateType === 'perSession' ? `$${amount} flat` : `$${amount}/hr`}`);
+        });
+        
+        cancelBtn.addEventListener('click', () => modalDiv.remove());
+    }
+    
+    function handleDayAdd(dateStr) {
+        if (selectedStudentIdForSession === null) {
+            alert("Please select a student first (click 'Select' on a student card).");
+            return;
+        }
+        const studentExists = students.some(s => s.id === selectedStudentIdForSession);
+        if (!studentExists) return;
+        showSessionModal(dateStr, selectedStudentIdForSession, null);
+    }
+    
+    function handleEditSession(sessionObj, dateStr) {
+        showSessionModal(dateStr, sessionObj.studentId, sessionObj);
+    }
+    
+    function handleRemoveSession(sessionId) {
+        if (confirm("Remove this session?")) {
+            sessions = sessions.filter(s => s.id !== sessionId);
+            saveToLocalStorage();
+            renderCalendar();
+            updateMonthlySummaryForSelectedStudent();
+            showTemporaryMessage(`🗑️ Session removed`);
+        }
+    }
+    
+    function showTemporaryMessage(msg) {
+        const infoDiv = document.getElementById('selectedDateInfo');
+        const original = infoDiv.innerHTML;
+        infoDiv.innerHTML = `✨ ${msg}<br>📌 Long press day → edit/remove options`;
+        setTimeout(() => {
+            if (document.getElementById('selectedDateInfo')) infoDiv.innerHTML = original;
+        }, 2000);
+    }
+    
+    // ---------- RENDER CALENDAR ----------
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        const monthYearLabel = document.getElementById('monthYearLabel');
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        monthYearLabel.innerText = `${monthNames[currentMonth]} ${currentYear}`;
+        
+        const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+        const firstDayOffset = getFirstDayOfMonthMondayBased(currentYear, currentMonth);
+        const totalCells = Math.ceil((firstDayOffset + daysInMonth) / 7) * 7;
+        let html = '';
+        
+        for (let i = 0; i < totalCells; i++) {
+            const dayNumber = i - firstDayOffset + 1;
+            const isValid = (dayNumber >= 1 && dayNumber <= daysInMonth);
+            const dateStr = isValid ? formatDateKey(currentYear, currentMonth, dayNumber) : null;
+            let sessionBadge = '';
+            if (isValid && selectedStudentIdForSession) {
+                const daySessions = sessions.filter(s => s.studentId === selectedStudentIdForSession && s.dateStr === dateStr);
+                if (daySessions.length > 0) sessionBadge = `📌 ${daySessions.length}`;
+            } else if (isValid) {
+                const anySessions = sessions.filter(s => s.dateStr === dateStr);
+                if (anySessions.length) sessionBadge = `📋 ${anySessions.length}`;
+            }
+            html += `<div class="day-cell" data-date="${dateStr || ''}" data-valid="${isValid}">
+                        <div class="day-number">${isValid ? dayNumber : ''}</div>
+                        ${sessionBadge ? `<div class="session-indicators">${sessionBadge}</div>` : '<div style="height:18px;"></div>'}
+                    </div>`;
+        }
+        grid.innerHTML = html;
+        
+        document.querySelectorAll('.day-cell').forEach(cell => {
+            const dateVal = cell.getAttribute('data-date');
+            const valid = cell.getAttribute('data-valid') === 'true';
+            if (!valid || !dateVal) return;
+            cell.addEventListener('click', () => handleDayAdd(dateVal));
+            cell.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if (!selectedStudentIdForSession) { alert("Select a student first"); return; }
+                const daySessions = sessions.filter(s => s.studentId === selectedStudentIdForSession && s.dateStr === dateVal);
+                if (daySessions.length === 0) {
+                    alert("No sessions for this student on this day.");
+                    return;
+                }
+                // build context menu
+                let menuHtml = `<div class="context-menu" style="position:fixed; background:white; border-radius:28px; box-shadow:0 8px 20px rgba(0,0,0,0.2); padding:8px; z-index:2000; min-width:220px;">`;
+                daySessions.forEach(s => {
+                    const timeInfo = `${s.startTime}–${s.endTime}`;
+                    const rateInfo = s.rateType === 'perSession' ? `💵 $${s.amount} flat` : `⏱️ $${s.amount}/hr`;
+                    menuHtml += `<div style="padding:8px 12px; border-bottom:1px solid #eee; cursor:pointer;" data-session-id="${s.id}" data-action="edit">✏️ Edit: ${timeInfo} · ${rateInfo}</div>`;
+                    menuHtml += `<div style="padding:8px 12px; cursor:pointer; color:#c23d3d;" data-session-id="${s.id}" data-action="remove">🗑️ Remove: ${timeInfo}</div>`;
+                });
+                menuHtml += `<div style="padding:8px; text-align:center;"><button id="closeContext" style="background:#eef2fa; border:none; padding:4px 12px; border-radius:60px;">Cancel</button></div></div>`;
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed'; overlay.style.top=0; overlay.style.left=0; overlay.style.width='100%'; overlay.style.height='100%'; overlay.style.zIndex=1999; overlay.style.background='rgba(0,0,0,0.1)';
+                const menuDiv = document.createElement('div');
+                menuDiv.innerHTML = menuHtml;
+                document.body.appendChild(overlay);
+                document.body.appendChild(menuDiv);
+                const rect = e.target.getBoundingClientRect();
+                menuDiv.style.position = 'fixed';
+                menuDiv.style.top = `${rect.bottom + 5}px`;
+                menuDiv.style.left = `${rect.left}px`;
+                menuDiv.style.zIndex = 2001;
+                const closeAll = () => { overlay.remove(); menuDiv.remove(); };
+                overlay.addEventListener('click', closeAll);
+                menuDiv.querySelectorAll('[data-action="edit"]').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const sessId = parseInt(el.getAttribute('data-session-id'));
+                        const session = sessions.find(s => s.id === sessId);
+                        if (session) handleEditSession(session, dateVal);
+                        closeAll();
+                    });
+                });
+                menuDiv.querySelectorAll('[data-action="remove"]').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const sessId = parseInt(el.getAttribute('data-session-id'));
+                        handleRemoveSession(sessId);
+                        closeAll();
+                    });
+                });
+                const closeBtn = menuDiv.querySelector('#closeContext');
+                if (closeBtn) closeBtn.addEventListener('click', closeAll);
+                return false;
+            });
+        });
+        updateStudentListUI();
+        updateMonthlySummaryForSelectedStudent();
+    }
+    
+    function getStudentNameById(id) {
+        const s = students.find(st => st.id === id);
+        return s ? s.name : "?";
+    }
+    
+    function updateStudentListUI() {
+        const container = document.getElementById('studentsListContainer');
+        if (!container) return;
+        if (students.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:20px;">✨ Add students to start</div>';
+            return;
+        }
+        container.innerHTML = students.map(student => {
+            const totalFee = getStudentTotalFee(student.id, currentYear, currentMonth);
+            const sessionsCount = getStudentSessionsInMonth(student.id, currentYear, currentMonth).length;
+            const isSelected = (selectedStudentIdForSession === student.id);
+            return `
+                <div class="student-card" style="border-left-color: ${isSelected ? '#1f6392' : '#2b9e6e'}; background: ${isSelected ? '#eef6fc' : '#f9fbfd'}">
+                    <div class="student-name">
+                        ${student.name}
+                        <button class="small delete-student" data-id="${student.id}">🗑️</button>
+                    </div>
+                    <div class="student-detail">📆 This month: ${sessionsCount} session(s) → $${totalFee.toFixed(2)}</div>
+                    <div class="student-actions">
+                        <button class="small select-student" data-id="${student.id}">✏️ Select</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        document.querySelectorAll('.delete-student').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = parseInt(btn.getAttribute('data-id'));
+                deleteStudentById(id);
+            });
+        });
+        document.querySelectorAll('.select-student').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = parseInt(btn.getAttribute('data-id'));
+                selectedStudentIdForSession = id;
+                updateStudentListUI();
+                renderCalendar();
+                updateMonthlySummaryForSelectedStudent();
+                document.getElementById('selectedDateInfo').innerHTML = `✅ Active: <strong>${getStudentNameById(id)}</strong><br>📌 Tap day → add session (always with start & end time). Long press day → edit/remove.`;
+            });
+        });
+    }
+    
+    function deleteStudentById(id) {
+        if (confirm('Delete student and ALL their sessions?')) {
+            students = students.filter(s => s.id !== id);
+            sessions = sessions.filter(s => s.studentId !== id);
+            if (selectedStudentIdForSession === id) selectedStudentIdForSession = (students.length ? students[0].id : null);
+            saveToLocalStorage();
+            renderCalendar();
+            updateMonthlySummaryForSelectedStudent();
+        }
+    }
+    
+    function addStudent(name) {
+        if (!name.trim()) return alert("Enter name");
+        const newId = Date.now();
+        students.push({ id: newId, name: name.trim() });
+        saveToLocalStorage();
+        renderCalendar();
+        if (selectedStudentIdForSession === null && students.length === 1) selectedStudentIdForSession = newId;
+        updateStudentListUI();
+        updateMonthlySummaryForSelectedStudent();
+    }
+    
+    function updateMonthlySummaryForSelectedStudent() {
+        const summaryDiv = document.getElementById('monthlySummary');
+        if (!summaryDiv) return;
+        if (selectedStudentIdForSession === null) {
+            summaryDiv.innerHTML = `<strong>📄 Monthly invoice</strong><br>👈 Select a student`;
+            return;
+        }
+        const student = students.find(s => s.id === selectedStudentIdForSession);
+        if (!student) { summaryDiv.innerHTML = `<strong>⚠️</strong>`; return; }
+        const monthShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const monthLabel = `${monthShort[currentMonth]} ${currentYear}`;
+        const sessionsList = getStudentSessionsInMonth(student.id, currentYear, currentMonth);
+        let detailsHtml = '';
+        let totalFee = 0;
+        sessionsList.forEach(sess => {
+            const amt = getSessionAmount(sess);
+            totalFee += amt;
+            const timeRange = `${sess.startTime}–${sess.endTime}`;
+            if (sess.rateType === 'perSession') {
+                detailsHtml += `<div>📅 ${sess.dateStr} · ${timeRange} — 💵 fixed $${sess.amount}</div>`;
+            } else {
+                detailsHtml += `<div>📅 ${sess.dateStr} · ${timeRange} (${sess.durationHours.toFixed(2)}h) @ $${sess.amount}/hr = $${amt.toFixed(2)}</div>`;
+            }
+        });
+        if (sessionsList.length === 0) detailsHtml = '<div>✨ No sessions yet</div>';
+        summaryDiv.innerHTML = `<strong>🧾 ${student.name} · ${monthLabel}</strong><br>💰 Total fee: <strong>$${totalFee.toFixed(2)}</strong><br><small>${detailsHtml}</small>`;
+    }
+    
+    // ---------- PRINT INVOICE (shows start & end time for every session) ----------
+    function printInvoiceForSelected() {
+        if (selectedStudentIdForSession === null) { alert("Select a student to print invoice."); return; }
+        const student = students.find(s => s.id === selectedStudentIdForSession);
+        if (!student) return;
+        const monthNamesFull = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const monthYearStr = `${monthNamesFull[currentMonth]} ${currentYear}`;
+        const sessionsList = getStudentSessionsInMonth(student.id, currentYear, currentMonth);
+        let rows = '';
+        let total = 0;
+        sessionsList.forEach(s => {
+            const amount = getSessionAmount(s);
+            total += amount;
+            const timeRange = `${s.startTime} – ${s.endTime}`;
+            let rateDetail = '';
+            if (s.rateType === 'perSession') {
+                rateDetail = `Fixed session fee: $${s.amount}`;
+            } else {
+                rateDetail = `Hourly rate: $${s.amount}/hr · ${s.durationHours.toFixed(2)} hours`;
+            }
+            rows += `<tr>
+                <td style="border:1px solid #ccc; padding:8px;">${s.dateStr}</td>
+                <td style="border:1px solid #ccc; padding:8px;">${timeRange}</td>
+                <td style="border:1px solid #ccc; padding:8px;">${rateDetail}</td>
+                <td style="border:1px solid #ccc; padding:8px; text-align:right;">$${amount.toFixed(2)}</td>
+            </tr>`;
+        });
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html>
+            <head><title>Invoice_${student.name}_${monthYearStr}</title>
+            <style>
+                body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 1000px; margin: auto; }
+                h2 { color: #1f6392; }
+                table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+                th { background: #f0f2f5; text-align: left; padding: 8px; border: 1px solid #bbb; }
+                td { padding: 8px; border: 1px solid #bbb; vertical-align: top; }
+                .total { font-size: 1.2rem; font-weight: bold; text-align: right; margin-top: 1rem; }
+                .footer { margin-top: 2rem; font-size: 0.75rem; text-align: center; }
+            </style>
+            </head>
+            <body>
+            <h2>📄 Tuition Invoice</h2>
+            <p><strong>Student:</strong> ${student.name}<br><strong>Billing Month:</strong> ${monthYearStr}</p>
+            <table>
+                <thead>
+                    <tr><th>Date</th><th>Time</th><th>Rate details</th><th>Amount</th></tr>
+                </thead>
+                <tbody>
+                    ${rows || '<tr><td colspan="4" style="text-align:center;">No sessions this month</td></tr>'}
+                </tbody>
+            </table>
+            <div class="total">Total Due: $${total.toFixed(2)}</div>
+            <div class="footer">Thank you for learning! Payment due within 7 days.<br>Each session includes precise start & end time.</div>
+            <script>window.onload = function() { window.print(); setTimeout(()=> window.close(), 600); }<\/script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
+    
+    function saveToLocalStorage() {
+        localStorage.setItem('tutorUni_students', JSON.stringify(students));
+        localStorage.setItem('tutorUni_sessions', JSON.stringify(sessions));
+        localStorage.setItem('tutorUni_defaultType', defaultRateType);
+        localStorage.setItem('tutorUni_defaultAmount', defaultAmount);
+    }
+    
+    function loadFromLocalStorage() {
+        const storedStudents = localStorage.getItem('tutorUni_students');
+        if (storedStudents) students = JSON.parse(storedStudents);
+        const storedSessions = localStorage.getItem('tutorUni_sessions');
+        if (storedSessions) sessions = JSON.parse(storedSessions);
+        const storedType = localStorage.getItem('tutorUni_defaultType');
+        if (storedType === 'perSession' || storedType === 'hourly') defaultRateType = storedType;
+        const storedAmount = localStorage.getItem('tutorUni_defaultAmount');
+        if (storedAmount) defaultAmount = parseFloat(storedAmount);
+        if (students.length > 0 && selectedStudentIdForSession === null) selectedStudentIdForSession = students[0].id;
+        document.getElementById('presetTypeSelect').value = defaultRateType;
+        document.getElementById('presetAmountInput').value = defaultAmount;
+    }
+    
+    // Event listeners
+    document.getElementById('addStudentBtn').addEventListener('click', () => {
+        addStudent(document.getElementById('newStudentName').value);
+        document.getElementById('newStudentName').value = '';
+    });
+    document.getElementById('prevMonthBtn').addEventListener('click', () => {
+        let newMonth = currentMonth - 1, newYear = currentYear;
+        if (newMonth < 0) { newMonth = 11; newYear--; }
+        currentMonth = newMonth; currentYear = newYear;
+        renderCalendar();
+    });
+    document.getElementById('nextMonthBtn').addEventListener('click', () => {
+        let newMonth = currentMonth + 1, newYear = currentYear;
+        if (newMonth > 11) { newMonth = 0; newYear++; }
+        currentMonth = newMonth; currentYear = newYear;
+        renderCalendar();
+    });
+    document.getElementById('applyPresetBtn').addEventListener('click', () => {
+        defaultRateType = document.getElementById('presetTypeSelect').value;
+        defaultAmount = parseFloat(document.getElementById('presetAmountInput').value);
+        if (isNaN(defaultAmount) || defaultAmount <= 0) defaultAmount = 40;
+        saveToLocalStorage();
+        alert(`Default preset: ${defaultRateType === 'perSession' ? `$${defaultAmount} per session` : `$${defaultAmount}/hour`}`);
+    });
+    document.getElementById('printInvoiceBtn').addEventListener('click', printInvoiceForSelected);
+    
+    loadFromLocalStorage();
+    renderCalendar();
+    if (students.length && !selectedStudentIdForSession) selectedStudentIdForSession = students[0].id;
+    updateStudentListUI();
+    updateMonthlySummaryForSelectedStudent();
+</script>
+</body>
+</html>
+```
