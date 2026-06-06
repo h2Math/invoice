@@ -551,7 +551,7 @@
             </div>
         </div>
 
-        <!-- Lessons View (No Payment Status) -->
+        <!-- Lessons View -->
         <div id="lessonsView" style="display: none;">
             <div class="grid-2cols">
                 <div class="card">
@@ -658,7 +658,7 @@
             </div>
         </div>
 
-        <!-- Analysis View (includes payment history) -->
+        <!-- Analysis View -->
         <div id="analysisView" style="display: none;">
             <div class="card">
                 <div class="card-title">📊 Fee Analysis & Payment Report</div>
@@ -833,7 +833,6 @@
         let currentInvoiceElement = null;
         let currentAnalysisElement = null;
 
-        // Auto-populate end time when start time changes
         function setupAutoEndTime() {
             const startInput = document.getElementById('lessonStart');
             const endInput = document.getElementById('lessonEnd');
@@ -1325,7 +1324,7 @@
             document.getElementById('totalEarnings').innerHTML = `$${totalEarnings.toFixed(2)}`;
         }
 
-        // ========== CALENDAR EXPORT (Simplified - Student Name Only) ==========
+        // ========== CALENDAR EXPORT - STUDENT NAME ONLY ==========
         function formatICSDate(date) {
             return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
         }
@@ -1355,9 +1354,11 @@ X-WR-CALDESC:Tuition lessons schedule
                 const startDate = new Date(lesson.start);
                 const endDate = new Date(lesson.end);
                 const uid = `${lesson.id}@mrleemath.com`;
-                // Simplified: Just student name as the event title
+                
+                // ONLY the student name - nothing else
                 const summary = lesson.studentName;
-                // Simple description (optional - can be empty or just notes)
+                
+                // Optional description - can be empty or just notes
                 const description = lesson.notes || '';
                 
                 icsContent += `BEGIN:VEVENT
@@ -1414,7 +1415,7 @@ Total groups: ${groups.length} groups`;
             showMessage('Instructions copied to clipboard!', 'success', 'calendarFormMessage');
         }
 
-        // ========== ANALYSIS (includes payment history) ==========
+        // ========== ANALYSIS ==========
         async function generateAnalysis() {
             const fromDate = document.getElementById('analysisFromDate').value;
             const toDate = document.getElementById('analysisToDate').value;
