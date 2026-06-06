@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mr Lee Math Tuition | Calendar Sync</title>
+    <title>Mr Lee Math Tuition | Group Payment Status</title>
     <style>
         * {
             margin: 0;
@@ -411,6 +411,32 @@
             font-size: 0.8rem;
             color: #666;
         }
+        .group-filter {
+            margin-bottom: 20px;
+        }
+        .group-filter select {
+            width: auto;
+            min-width: 200px;
+        }
+        .payment-status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-paid {
+            background: rgba(0,208,156,0.2);
+            color: #00d09c;
+        }
+        .status-unpaid {
+            background: rgba(255,77,109,0.2);
+            color: #ff4d6d;
+        }
+        .status-partial {
+            background: rgba(255,217,61,0.2);
+            color: #ffd93d;
+        }
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
@@ -429,6 +455,9 @@
                 padding: 5px;
                 font-size: 0.7rem;
             }
+            .group-filter select {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -437,7 +466,7 @@
         <div class="header">
             <div class="title-section">
                 <h1>📚 Mr Lee Math Tuition</h1>
-                <p>Analysis | Invoices | Calendar Sync</p>
+                <p>Group Payment Status | Analysis | Invoices</p>
             </div>
             <div class="controls">
                 <button onclick="toggleTheme()">🌓 Dark/Light</button>
@@ -450,6 +479,7 @@
             <div class="mode-btn active" data-mode="groups" onclick="switchMode('groups')">👥 Groups</div>
             <div class="mode-btn" data-mode="students" onclick="switchMode('students')">👨‍🎓 Students</div>
             <div class="mode-btn" data-mode="lessons" onclick="switchMode('lessons')">📚 Lessons</div>
+            <div class="mode-btn" data-mode="payment" onclick="switchMode('payment')">💰 Group Payment</div>
             <div class="mode-btn" data-mode="analysis" onclick="switchMode('analysis')">📊 Analysis</div>
             <div class="mode-btn" data-mode="invoice" onclick="switchMode('invoice')">🧾 Invoice</div>
             <div class="mode-btn" data-mode="calendar" onclick="switchMode('calendar')">📅 Calendar</div>
@@ -521,7 +551,7 @@
             </div>
         </div>
 
-        <!-- Lessons View -->
+        <!-- Lessons View (No Payment Status) -->
         <div id="lessonsView" style="display: none;">
             <div class="grid-2cols">
                 <div class="card">
@@ -556,15 +586,6 @@
                         <textarea id="lessonNotes" rows="2" placeholder="Homework assigned"></textarea>
                     </div>
                     
-                    <div class="form-group">
-                        <label>Payment Status</label>
-                        <select id="paymentStatus">
-                            <option value="unpaid">⚠️ Unpaid</option>
-                            <option value="paid">✅ Paid</option>
-                            <option value="partial">🔄 Partial</option>
-                        </select>
-                    </div>
-                    
                     <button onclick="addLesson()" class="btn-primary" style="width: 100%;">✨ Add Lesson</button>
                 </div>
 
@@ -580,10 +601,6 @@
                             <div class="stat-number" id="totalEarnings">$0</div>
                             <div class="stat-label">Total Earnings</div>
                         </div>
-                        <div class="stat">
-                            <div class="stat-number" id="unpaidAmount">$0</div>
-                            <div class="stat-label">Unpaid</div>
-                        </div>
                     </div>
                     
                     <div id="lessonList" class="lesson-list">
@@ -593,10 +610,58 @@
             </div>
         </div>
 
-        <!-- Analysis View -->
+        <!-- Group Payment View -->
+        <div id="paymentView" style="display: none;">
+            <div class="card">
+                <div class="card-title">💰 Group Payment Status</div>
+                <div id="paymentFormMessage" class="success-msg" style="display: none;"></div>
+                
+                <div class="grid-2cols" style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>Select Group</label>
+                        <select id="paymentGroupFilter" onchange="renderGroupPayment()">
+                            <option value="">-- Select Group --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Status</label>
+                        <select id="groupPaymentStatus" onchange="updateGroupPaymentStatus()">
+                            <option value="unpaid">⚠️ Unpaid</option>
+                            <option value="paid">✅ Paid</option>
+                            <option value="partial">🔄 Partial</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button onclick="updateGroupPaymentStatus()" class="btn-primary" style="width: 100%; margin-bottom: 20px;">💾 Update Group Payment Status</button>
+                
+                <div id="groupPaymentInfo" style="display: none;">
+                    <div class="stats-bar">
+                        <div class="stat">
+                            <div class="stat-number" id="groupTotalLessons">0</div>
+                            <div class="stat-label">Lessons</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number" id="groupTotalAmount">$0</div>
+                            <div class="stat-label">Total Amount</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number" id="groupPaymentBadge"></div>
+                            <div class="stat-label">Current Status</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="groupPaymentList" class="lesson-list">
+                    <div style="text-align: center; padding: 40px; color: #8892b0;">Select a group to view payment status</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis View (includes payment history) -->
         <div id="analysisView" style="display: none;">
             <div class="card">
-                <div class="card-title">📊 Fee Analysis</div>
+                <div class="card-title">📊 Fee Analysis & Payment Report</div>
                 <div id="analysisFormMessage" class="success-msg" style="display: none;"></div>
                 
                 <div class="grid-2cols" style="margin-bottom: 20px;">
@@ -611,8 +676,8 @@
                 </div>
                 
                 <div class="button-group">
-                    <button onclick="generateAnalysis()" class="btn-primary" style="flex:1;">📊 Generate Analysis</button>
-                    <button id="shareAnalysisBtn" onclick="shareAnalysis()" class="btn-share" style="flex:1; display:none;">📤 Share Analysis</button>
+                    <button onclick="generateAnalysis()" class="btn-primary" style="flex:1;">📊 Generate Report</button>
+                    <button id="shareAnalysisBtn" onclick="shareAnalysis()" class="btn-share" style="flex:1; display:none;">📤 Share Report</button>
                 </div>
                 
                 <div id="analysisPreview" style="display: none; margin-top: 20px;">
@@ -694,11 +759,11 @@
             <div class="success-box">
                 <strong>✅ Features:</strong>
                 <ul style="margin-top: 10px; margin-left: 20px;">
+                    <li>💰 <strong>Group Payment Status</strong> - Set payment status for entire group</li>
+                    <li>📊 <strong>Analysis Report</strong> - Includes payment history by group</li>
                     <li>⏱️ <strong>Auto End Time</strong> - End time automatically sets to 1.5 hours after start time</li>
-                    <li>📊 <strong>Fee Analysis</strong> - View total fees earned by group and student for any period</li>
                     <li>🧾 <strong>Invoices</strong> - Generate shareable invoices with "Mr Lee Math Tuition" branding</li>
-                    <li>📅 <strong>Calendar Sync</strong> - Export all lessons to Apple Calendar</li>
-                    <li>👥 <strong>Groups & Students</strong> - Organize and track per-session or per-hour rates</li>
+                    <li>📅 <strong>Calendar Sync</strong> - Export lessons to Apple Calendar (shows student name only)</li>
                 </ul>
             </div>
         </div>
@@ -716,6 +781,14 @@
             <div class="form-group">
                 <label>Group Name</label>
                 <input type="text" id="editGroupName">
+            </div>
+            <div class="form-group">
+                <label>Payment Status</label>
+                <select id="editGroupPaymentStatus">
+                    <option value="unpaid">⚠️ Unpaid</option>
+                    <option value="paid">✅ Paid</option>
+                    <option value="partial">🔄 Partial</option>
+                </select>
             </div>
             <button onclick="saveGroupEdit()" class="btn-primary" style="width: 100%;">💾 Save Changes</button>
             <button onclick="closeGroupModal()" style="width: 100%; margin-top: 10px;">Cancel</button>
@@ -818,8 +891,8 @@
             
             if (!hasAnyData) {
                 groups = [
-                    { id: '1', name: 'Primary Mathematics' },
-                    { id: '2', name: 'Secondary Science' }
+                    { id: '1', name: 'Primary Mathematics', paymentStatus: 'unpaid' },
+                    { id: '2', name: 'Secondary Science', paymentStatus: 'paid' }
                 ];
                 students = [
                     { id: '1', name: 'Emma Wong', groupId: '1', rateType: 'hourly', rateAmount: 45 },
@@ -828,9 +901,9 @@
                 ];
                 const today = new Date();
                 lessons = [
-                    { id: '1', studentId: '1', studentName: 'Emma Wong', groupId: '1', start: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 16, 0)), end: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 17, 30)), topic: 'Algebra Basics', notes: '', paymentStatus: 'unpaid', earnings: 67.50, hours: 1.5 },
-                    { id: '2', studentId: '2', studentName: 'Liam Tan', groupId: '1', start: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 16, 0)), end: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 17, 30)), topic: 'Algebra Basics', notes: '', paymentStatus: 'paid', earnings: 80, hours: 1.5 },
-                    { id: '3', studentId: '1', studentName: 'Emma Wong', groupId: '1', start: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5, 16, 0)), end: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5, 17, 30)), topic: 'Geometry', notes: '', paymentStatus: 'unpaid', earnings: 67.50, hours: 1.5 }
+                    { id: '1', studentId: '1', studentName: 'Emma Wong', groupId: '1', start: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 16, 0)), end: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 17, 30)), topic: 'Algebra Basics', notes: '', earnings: 67.50, hours: 1.5 },
+                    { id: '2', studentId: '2', studentName: 'Liam Tan', groupId: '1', start: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 16, 0)), end: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 17, 30)), topic: 'Algebra Basics', notes: '', earnings: 80, hours: 1.5 },
+                    { id: '3', studentId: '1', studentName: 'Emma Wong', groupId: '1', start: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5, 16, 0)), end: getDateTimeLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5, 17, 30)), topic: 'Geometry', notes: '', earnings: 67.50, hours: 1.5 }
                 ];
                 saveGroups();
                 saveStudents();
@@ -876,7 +949,7 @@
         }
 
         function updateSelectors() {
-            const groupSelects = ['studentGroup', 'invoiceGroup', 'editStudentGroup'];
+            const groupSelects = ['studentGroup', 'invoiceGroup', 'editStudentGroup', 'paymentGroupFilter'];
             for (const selectId of groupSelects) {
                 const select = document.getElementById(selectId);
                 if (select) {
@@ -905,7 +978,7 @@
                 showMessage('Please enter group name', 'error', 'groupFormMessage');
                 return;
             }
-            groups.push({ id: Date.now().toString(), name: name });
+            groups.push({ id: Date.now().toString(), name: name, paymentStatus: 'unpaid' });
             saveGroups();
             renderGroups();
             updateSelectors();
@@ -921,18 +994,25 @@
             }
             const studentCount = (groupId) => students.filter(s => s.groupId === groupId).length;
             const lessonCount = (groupId) => lessons.filter(l => l.groupId === groupId).length;
-            container.innerHTML = groups.map(group => `
-                <div class="group-item">
-                    <div class="group-info">
-                        <div class="group-name">${escapeHtml(group.name)}</div>
-                        <div class="group-details">👨‍🎓 ${studentCount(group.id)} students | 📚 ${lessonCount(group.id)} lessons</div>
+            const groupTotal = (groupId) => lessons.filter(l => l.groupId === groupId).reduce((sum, l) => sum + l.earnings, 0);
+            
+            container.innerHTML = groups.map(group => {
+                const statusClass = group.paymentStatus === 'paid' ? 'status-paid' : (group.paymentStatus === 'partial' ? 'status-partial' : 'status-unpaid');
+                const statusText = group.paymentStatus === 'paid' ? '✅ Paid' : (group.paymentStatus === 'partial' ? '🔄 Partial' : '⚠️ Unpaid');
+                return `
+                    <div class="group-item">
+                        <div class="group-info">
+                            <div class="group-name">${escapeHtml(group.name)}</div>
+                            <div class="group-details">👨‍🎓 ${studentCount(group.id)} students | 📚 ${lessonCount(group.id)} lessons | 💰 $${groupTotal(group.id).toFixed(2)}</div>
+                            <div class="group-details"><span class="payment-status-badge ${statusClass}">${statusText}</span></div>
+                        </div>
+                        <div>
+                            <button class="edit-btn" onclick='openEditGroup(${JSON.stringify(group)})'>✏️ Edit</button>
+                            <button class="delete-btn" onclick="deleteGroup('${group.id}', '${escapeHtml(group.name).replace(/'/g, "\\'")}')">🗑️ Delete</button>
+                        </div>
                     </div>
-                    <div>
-                        <button class="edit-btn" onclick='openEditGroup(${JSON.stringify(group)})'>✏️ Edit</button>
-                        <button class="delete-btn" onclick="deleteGroup('${group.id}', '${escapeHtml(group.name).replace(/'/g, "\\'")}')">🗑️ Delete</button>
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function deleteGroup(groupId, groupName) {
@@ -953,6 +1033,7 @@
         function openEditGroup(group) {
             document.getElementById('editGroupId').value = group.id;
             document.getElementById('editGroupName').value = group.name;
+            document.getElementById('editGroupPaymentStatus').value = group.paymentStatus || 'unpaid';
             document.getElementById('groupModal').style.display = 'flex';
         }
 
@@ -961,6 +1042,7 @@
             const index = groups.findIndex(g => g.id === id);
             if (index !== -1) {
                 groups[index].name = document.getElementById('editGroupName').value.trim();
+                groups[index].paymentStatus = document.getElementById('editGroupPaymentStatus').value;
                 saveGroups();
                 renderGroups();
                 updateSelectors();
@@ -970,6 +1052,74 @@
         }
 
         function closeGroupModal() { document.getElementById('groupModal').style.display = 'none'; }
+
+        // ========== GROUP PAYMENT ==========
+        function renderGroupPayment() {
+            const groupId = document.getElementById('paymentGroupFilter').value;
+            if (!groupId) {
+                document.getElementById('groupPaymentList').innerHTML = '<div style="text-align: center; padding: 40px; color: #8892b0;">Select a group to view payment status</div>';
+                document.getElementById('groupPaymentInfo').style.display = 'none';
+                return;
+            }
+            
+            const group = groups.find(g => g.id === groupId);
+            const groupLessons = lessons.filter(l => l.groupId === groupId);
+            const totalAmount = groupLessons.reduce((sum, l) => sum + l.earnings, 0);
+            const statusClass = group?.paymentStatus === 'paid' ? 'status-paid' : (group?.paymentStatus === 'partial' ? 'status-partial' : 'status-unpaid');
+            const statusText = group?.paymentStatus === 'paid' ? '✅ Paid' : (group?.paymentStatus === 'partial' ? '🔄 Partial' : '⚠️ Unpaid');
+            
+            document.getElementById('groupTotalLessons').innerHTML = groupLessons.length;
+            document.getElementById('groupTotalAmount').innerHTML = `$${totalAmount.toFixed(2)}`;
+            document.getElementById('groupPaymentBadge').innerHTML = `<span class="payment-status-badge ${statusClass}">${statusText}</span>`;
+            document.getElementById('groupPaymentInfo').style.display = 'flex';
+            document.getElementById('groupPaymentStatus').value = group?.paymentStatus || 'unpaid';
+            
+            const sorted = [...groupLessons].sort((a, b) => new Date(b.start) - new Date(a.start));
+            
+            if (groupLessons.length === 0) {
+                document.getElementById('groupPaymentList').innerHTML = '<div style="text-align: center; padding: 40px; color: #8892b0;">No lessons found for this group</div>';
+                return;
+            }
+            
+            const paymentHTML = sorted.map(lesson => {
+                const student = students.find(s => s.id === lesson.studentId);
+                const rateDisplay = student?.rateType === 'hourly' ? `$${student.rateAmount}/hr` : `$${student.rateAmount}/session`;
+                return `
+                    <div class="lesson-item">
+                        <div class="lesson-info">
+                            <div class="student-name">${escapeHtml(lesson.studentName)}</div>
+                            <div class="lesson-details">
+                                <span class="badge">📅 ${formatDate(lesson.start)}</span>
+                                <span class="badge">⏰ ${formatTime(lesson.start)} - ${formatTime(lesson.end)}</span>
+                                <span class="badge">💰 $${lesson.earnings.toFixed(2)} (${rateDisplay})</span>
+                            </div>
+                            ${lesson.topic ? `<div class="lesson-details">📖 ${escapeHtml(lesson.topic)}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('groupPaymentList').innerHTML = paymentHTML;
+        }
+
+        function updateGroupPaymentStatus() {
+            const groupId = document.getElementById('paymentGroupFilter').value;
+            const newStatus = document.getElementById('groupPaymentStatus').value;
+            
+            if (!groupId) {
+                showMessage('Please select a group first', 'error', 'paymentFormMessage');
+                return;
+            }
+            
+            const index = groups.findIndex(g => g.id === groupId);
+            if (index !== -1) {
+                groups[index].paymentStatus = newStatus;
+                saveGroups();
+                renderGroups();
+                renderGroupPayment();
+                showMessage(`✅ Payment status for "${groups[index].name}" updated to ${newStatus}`, 'success', 'paymentFormMessage');
+            }
+        }
 
         // ========== STUDENTS ==========
         function addStudent() {
@@ -1081,7 +1231,6 @@
             const end = document.getElementById('lessonEnd').value;
             const topic = document.getElementById('lessonTopic').value;
             const notes = document.getElementById('lessonNotes').value;
-            const paymentStatus = document.getElementById('paymentStatus').value;
             
             if (!studentId || !start || !end) {
                 showMessage('Please select a student and lesson times', 'error', 'lessonFormMessage');
@@ -1107,7 +1256,6 @@
                 end: end,
                 topic: topic,
                 notes: notes,
-                paymentStatus: paymentStatus,
                 earnings: earnings,
                 hours: hours
             };
@@ -1143,16 +1291,6 @@
             }
         }
 
-        function updatePaymentStatus(lessonId, newStatus) {
-            const lesson = lessons.find(l => l.id === lessonId);
-            if (lesson) {
-                lesson.paymentStatus = newStatus;
-                saveLessons();
-                renderLessons();
-                updateLessonStats();
-            }
-        }
-
         function renderLessons() {
             const container = document.getElementById('lessonList');
             if (lessons.length === 0) {
@@ -1173,14 +1311,6 @@
                                 <span class="badge">💰 $${lesson.earnings.toFixed(2)} (${rateDisplay})</span>
                             </div>
                             ${lesson.topic ? `<div class="lesson-details">📖 ${escapeHtml(lesson.topic)}</div>` : ''}
-                            <div class="lesson-details" style="margin-top: 5px;">
-                                Payment: 
-                                <select onchange="updatePaymentStatus('${lesson.id}', this.value)" style="width: auto; padding: 5px;">
-                                    <option value="unpaid" ${lesson.paymentStatus === 'unpaid' ? 'selected' : ''}>⚠️ Unpaid</option>
-                                    <option value="paid" ${lesson.paymentStatus === 'paid' ? 'selected' : ''}>✅ Paid</option>
-                                    <option value="partial" ${lesson.paymentStatus === 'partial' ? 'selected' : ''}>🔄 Partial</option>
-                                </select>
-                            </div>
                         </div>
                         <button class="delete-btn" onclick="deleteLesson('${lesson.id}')">🗑️ Delete</button>
                     </div>
@@ -1191,13 +1321,11 @@
         function updateLessonStats() {
             const totalLessons = lessons.length;
             const totalEarnings = lessons.reduce((sum, l) => sum + l.earnings, 0);
-            const unpaidAmount = lessons.filter(l => l.paymentStatus === 'unpaid').reduce((sum, l) => sum + l.earnings, 0);
             document.getElementById('totalLessons').innerHTML = totalLessons;
             document.getElementById('totalEarnings').innerHTML = `$${totalEarnings.toFixed(2)}`;
-            document.getElementById('unpaidAmount').innerHTML = `$${unpaidAmount.toFixed(2)}`;
         }
 
-        // ========== CALENDAR EXPORT ==========
+        // ========== CALENDAR EXPORT (Simplified - Student Name Only) ==========
         function formatICSDate(date) {
             return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
         }
@@ -1219,16 +1347,18 @@ VERSION:2.0
 PRODID:-//Mr Lee Math Tuition//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
-X-WR-CALNAME:Tuition Lessons
-X-WR-CALDESC:All tuition lessons schedule
+X-WR-CALNAME:Tuition Schedule
+X-WR-CALDESC:Tuition lessons schedule
 `;
             
             for (const lesson of lessons) {
                 const startDate = new Date(lesson.start);
                 const endDate = new Date(lesson.end);
                 const uid = `${lesson.id}@mrleemath.com`;
-                const summary = `📚 Tuition: ${lesson.studentName} - ${lesson.topic || 'Lesson'}`;
-                const description = `Group: ${groups.find(g => g.id === lesson.groupId)?.name || 'Unknown'}\nPayment Status: ${lesson.paymentStatus}\nNotes: ${lesson.notes || ''}`;
+                // Simplified: Just student name as the event title
+                const summary = lesson.studentName;
+                // Simple description (optional - can be empty or just notes)
+                const description = lesson.notes || '';
                 
                 icsContent += `BEGIN:VEVENT
 UID:${uid}
@@ -1274,6 +1404,8 @@ END:VEVENT
 3. On iPhone, tap the .ics file → "Add to Calendar"
 4. Select your calendar → Tap "Add"
 
+Each calendar event will show the student's name only.
+
 Current lessons: ${lessons.length} lessons
 Total students: ${students.length} students
 Total groups: ${groups.length} groups`;
@@ -1282,7 +1414,7 @@ Total groups: ${groups.length} groups`;
             showMessage('Instructions copied to clipboard!', 'success', 'calendarFormMessage');
         }
 
-        // ========== ANALYSIS ==========
+        // ========== ANALYSIS (includes payment history) ==========
         async function generateAnalysis() {
             const fromDate = document.getElementById('analysisFromDate').value;
             const toDate = document.getElementById('analysisToDate').value;
@@ -1303,6 +1435,7 @@ Total groups: ${groups.length} groups`;
             }
             
             const groupTotals = {};
+            const groupPaymentStatus = {};
             const studentTotals = {};
             let overallTotal = 0;
             let totalHours = 0;
@@ -1313,6 +1446,7 @@ Total groups: ${groups.length} groups`;
                 const studentName = lesson.studentName;
                 
                 groupTotals[groupName] = (groupTotals[groupName] || 0) + lesson.earnings;
+                groupPaymentStatus[groupName] = group?.paymentStatus || 'unpaid';
                 studentTotals[studentName] = {
                     group: groupName,
                     earnings: (studentTotals[studentName]?.earnings || 0) + lesson.earnings,
@@ -1326,7 +1460,7 @@ Total groups: ${groups.length} groups`;
             let analysisHTML = `
                 <div id="analysisContainer" class="analysis-container" style="background: white; color: #1a1a2e; padding: 30px; font-family: Arial, sans-serif; border-radius: 20px; max-width: 800px; margin: 0 auto;">
                     <div class="analysis-header">
-                        <div class="analysis-title">FEE ANALYSIS REPORT</div>
+                        <div class="analysis-title">FEE ANALYSIS & PAYMENT REPORT</div>
                         <div class="analysis-dates">Period: ${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}</div>
                     </div>
                     
@@ -1336,17 +1470,27 @@ Total groups: ${groups.length} groups`;
                         <div style="margin-top: 10px;">📊 ${totalHours.toFixed(1)} total hours | 📚 ${filteredLessons.length} total lessons</div>
                     </div>
                     
-                    <h3 style="margin: 20px 0 10px 0;">By Group</h3>
+                    <h3 style="margin: 20px 0 10px 0;">By Group (with Payment Status)</h3>
                     <table class="analysis-table">
                         <thead>
-                            <tr><th>Group</th><th>Total Fees</th><th>% of Total</th></tr>
+                            <tr><th>Group</th><th>Total Fees</th><th>% of Total</th><th>Payment Status</th></tr>
                         </thead>
                         <tbody>
             `;
             
             for (const [groupName, total] of Object.entries(groupTotals).sort((a, b) => b[1] - a[1])) {
                 const percentage = (total / overallTotal * 100).toFixed(1);
-                analysisHTML += `<tr><td>${escapeHtml(groupName)}</td><td>$${total.toFixed(2)}</td><td>${percentage}%</td></tr>`;
+                const status = groupPaymentStatus[groupName];
+                const statusClass = status === 'paid' ? 'status-paid' : (status === 'partial' ? 'status-partial' : 'status-unpaid');
+                const statusText = status === 'paid' ? '✅ Paid' : (status === 'partial' ? '🔄 Partial' : '⚠️ Unpaid');
+                analysisHTML += `
+                    <tr>
+                        <td>${escapeHtml(groupName)}</td>
+                        <td>$${total.toFixed(2)}</td>
+                        <td>${percentage}%</td>
+                        <td><span class="payment-status-badge ${statusClass}">${statusText}</span></td>
+                    </tr>
+                `;
             }
             
             analysisHTML += `
@@ -1391,16 +1535,16 @@ Total groups: ${groups.length} groups`;
             document.getElementById('shareAnalysisBtn').style.display = 'block';
             currentAnalysisElement = document.getElementById('analysisContainer');
             
-            showMessage('✅ Analysis generated! Click "Share Analysis" to send.', 'success', 'analysisFormMessage');
+            showMessage('✅ Report generated! Click "Share Report" to send.', 'success', 'analysisFormMessage');
         }
         
         async function shareAnalysis() {
             if (!currentAnalysisElement) {
-                showMessage('Please generate an analysis first', 'error', 'analysisFormMessage');
+                showMessage('Please generate a report first', 'error', 'analysisFormMessage');
                 return;
             }
             
-            showMessage('📸 Capturing analysis...', 'success', 'analysisFormMessage');
+            showMessage('📸 Capturing report...', 'success', 'analysisFormMessage');
             
             try {
                 const canvas = await html2canvas(currentAnalysisElement, {
@@ -1420,7 +1564,7 @@ Total groups: ${groups.length} groups`;
                                 text: 'Here is the fee analysis report',
                                 files: [file]
                             });
-                            showMessage('✅ Analysis shared!', 'success', 'analysisFormMessage');
+                            showMessage('✅ Report shared!', 'success', 'analysisFormMessage');
                         } catch (shareError) {
                             downloadAnalysisImage(canvas);
                         }
@@ -1431,7 +1575,7 @@ Total groups: ${groups.length} groups`;
                 
             } catch (error) {
                 console.error('Screenshot error:', error);
-                showMessage('Error capturing analysis. Please try again.', 'error', 'analysisFormMessage');
+                showMessage('Error capturing report. Please try again.', 'error', 'analysisFormMessage');
             }
         }
         
@@ -1440,7 +1584,7 @@ Total groups: ${groups.length} groups`;
             link.download = 'fee_analysis.png';
             link.href = canvas.toDataURL();
             link.click();
-            showMessage('📸 Analysis image downloaded!', 'success', 'analysisFormMessage');
+            showMessage('📸 Report image downloaded!', 'success', 'analysisFormMessage');
         }
 
         // ========== INVOICE ==========
@@ -1637,6 +1781,7 @@ Total groups: ${groups.length} groups`;
             document.getElementById('groupsView').style.display = mode === 'groups' ? 'block' : 'none';
             document.getElementById('studentsView').style.display = mode === 'students' ? 'block' : 'none';
             document.getElementById('lessonsView').style.display = mode === 'lessons' ? 'block' : 'none';
+            document.getElementById('paymentView').style.display = mode === 'payment' ? 'block' : 'none';
             document.getElementById('analysisView').style.display = mode === 'analysis' ? 'block' : 'none';
             document.getElementById('invoiceView').style.display = mode === 'invoice' ? 'block' : 'none';
             document.getElementById('calendarView').style.display = mode === 'calendar' ? 'block' : 'none';
@@ -1644,6 +1789,9 @@ Total groups: ${groups.length} groups`;
             if (mode === 'groups') renderGroups();
             if (mode === 'students') renderStudents();
             if (mode === 'lessons') { renderLessons(); updateLessonStats(); }
+            if (mode === 'payment') {
+                renderGroupPayment();
+            }
             if (mode === 'analysis') {
                 document.getElementById('analysisPreview').style.display = 'none';
                 document.getElementById('shareAnalysisBtn').style.display = 'none';
@@ -1662,6 +1810,7 @@ Total groups: ${groups.length} groups`;
         function openAddGroupModal() {
             document.getElementById('editGroupId').value = '';
             document.getElementById('editGroupName').value = '';
+            document.getElementById('editGroupPaymentStatus').value = 'unpaid';
             document.getElementById('groupModalTitle').innerText = 'Add New Group';
             document.getElementById('groupModal').style.display = 'flex';
             const saveBtn = document.querySelector('#groupModal .btn-primary');
@@ -1671,11 +1820,12 @@ Total groups: ${groups.length} groups`;
         
         function saveNewGroup() {
             const name = document.getElementById('editGroupName').value.trim();
+            const paymentStatus = document.getElementById('editGroupPaymentStatus').value;
             if (!name) {
                 alert('Please enter group name');
                 return;
             }
-            groups.push({ id: Date.now().toString(), name: name });
+            groups.push({ id: Date.now().toString(), name: name, paymentStatus: paymentStatus });
             saveGroups();
             renderGroups();
             updateSelectors();
