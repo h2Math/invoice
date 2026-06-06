@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mr Lee Math Tuition | Group Payment Status</title>
+    <title>Mr Lee Math Tuition | Backup & Restore</title>
     <style>
         * {
             margin: 0;
@@ -88,6 +88,12 @@
         }
         .btn-share {
             background: linear-gradient(135deg, #25D366, #128C7E);
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+        .btn-backup {
+            background: linear-gradient(135deg, #5856D6, #4A44C4);
             color: white;
             border: none;
             font-weight: 600;
@@ -437,6 +443,12 @@
             background: rgba(255,217,61,0.2);
             color: #ffd93d;
         }
+        .backup-info {
+            background: rgba(0,208,156,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
@@ -466,7 +478,7 @@
         <div class="header">
             <div class="title-section">
                 <h1>📚 Mr Lee Math Tuition</h1>
-                <p>Group Payment Status | Analysis | Invoices</p>
+                <p>Export/Import Backup | Group Payment | Invoices</p>
             </div>
             <div class="controls">
                 <button onclick="toggleTheme()">🌓 Dark/Light</button>
@@ -483,6 +495,7 @@
             <div class="mode-btn" data-mode="analysis" onclick="switchMode('analysis')">📊 Analysis</div>
             <div class="mode-btn" data-mode="invoice" onclick="switchMode('invoice')">🧾 Invoice</div>
             <div class="mode-btn" data-mode="calendar" onclick="switchMode('calendar')">📅 Calendar</div>
+            <div class="mode-btn" data-mode="backup" onclick="switchMode('backup')">💾 Backup</div>
         </div>
 
         <!-- Groups View -->
@@ -754,16 +767,55 @@
             </div>
         </div>
 
+        <!-- Backup View -->
+        <div id="backupView" style="display: none;">
+            <div class="card">
+                <div class="card-title">💾 Backup & Restore Data</div>
+                <div id="backupFormMessage" class="success-msg" style="display: none;"></div>
+                
+                <div class="backup-info">
+                    <strong>📊 Current Data Summary:</strong><br>
+                    Groups: <span id="backupGroupCount">0</span><br>
+                    Students: <span id="backupStudentCount">0</span><br>
+                    Lessons: <span id="backupLessonCount">0</span>
+                </div>
+                
+                <div class="success-box" style="margin-bottom: 20px;">
+                    <strong>💾 How to Backup:</strong>
+                    <ul style="margin-top: 10px; margin-left: 20px;">
+                        <li>Click <strong>"Export to File"</strong> to save your data as a JSON file</li>
+                        <li>Save the file to your computer, iCloud Drive, Google Drive, or email it to yourself</li>
+                        <li>Use this file to restore data on any device</li>
+                    </ul>
+                </div>
+                
+                <div class="success-box" style="margin-bottom: 20px;">
+                    <strong>🔄 How to Restore:</strong>
+                    <ul style="margin-top: 10px; margin-left: 20px;">
+                        <li>Click <strong>"Import from File"</strong> to select a previously saved backup file</li>
+                        <li><strong>⚠️ Warning:</strong> This will replace ALL current data</li>
+                        <li>The app will reload with your backed-up data</li>
+                    </ul>
+                </div>
+                
+                <div class="button-group">
+                    <button onclick="exportToFile()" class="btn-backup" style="flex:1;">📁 Export to File</button>
+                    <button onclick="importFromFile()" class="btn-primary" style="flex:1;">📂 Import from File</button>
+                </div>
+            </div>
+        </div>
+
         <div class="instructions">
             <h3>📖 How It Works</h3>
             <div class="success-box">
                 <strong>✅ Features:</strong>
                 <ul style="margin-top: 10px; margin-left: 20px;">
+                    <li>💾 <strong>Export to File</strong> - Save your data as a JSON backup file</li>
+                    <li>📂 <strong>Import from File</strong> - Restore data from a backup file</li>
                     <li>💰 <strong>Group Payment Status</strong> - Set payment status for entire group</li>
                     <li>📊 <strong>Analysis Report</strong> - Includes payment history by group</li>
-                    <li>⏱️ <strong>Auto End Time</strong> - End time automatically sets to 1.5 hours after start time</li>
-                    <li>🧾 <strong>Invoices</strong> - Generate shareable invoices with "Mr Lee Math Tuition" branding</li>
-                    <li>📅 <strong>Calendar Sync</strong> - Export lessons to Apple Calendar (shows student name only)</li>
+                    <li>🧾 <strong>Invoices</strong> - Generate shareable invoices</li>
+                    <li>📅 <strong>Calendar Sync</strong> - Export lessons to Apple Calendar</li>
                 </ul>
             </div>
         </div>
@@ -915,6 +967,13 @@
             renderLessons();
             updateLessonStats();
             updateCalendarStats();
+            updateBackupStats();
+        }
+
+        function updateBackupStats() {
+            document.getElementById('backupGroupCount').innerHTML = groups.length;
+            document.getElementById('backupStudentCount').innerHTML = students.length;
+            document.getElementById('backupLessonCount').innerHTML = lessons.length;
         }
 
         function updateCalendarStats() {
@@ -970,6 +1029,78 @@
             }
         }
 
+        // ========== BACKUP FUNCTIONS ==========
+        function getAllData() {
+            return {
+                groups: groups,
+                students: students,
+                lessons: lessons,
+                exportDate: new Date().toISOString(),
+                version: '1.0'
+            };
+        }
+
+        function exportToFile() {
+            const data = getAllData();
+            const dataStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `tuition_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showMessage('✅ Data exported successfully! Save the file to your preferred location.', 'success', 'backupFormMessage');
+        }
+
+        function importFromFile() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.json';
+            fileInput.onchange = function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const backupData = JSON.parse(e.target.result);
+                            
+                            if (backupData.groups && backupData.students && backupData.lessons) {
+                                if (confirm('⚠️ WARNING: This will replace ALL current data. Continue?')) {
+                                    groups = backupData.groups;
+                                    students = backupData.students;
+                                    lessons = backupData.lessons;
+                                    
+                                    saveGroups();
+                                    saveStudents();
+                                    saveLessons();
+                                    
+                                    // Refresh all views
+                                    renderGroups();
+                                    renderStudents();
+                                    renderLessons();
+                                    updateLessonStats();
+                                    updateCalendarStats();
+                                    updateBackupStats();
+                                    updateSelectors();
+                                    
+                                    showMessage('✅ Data restored successfully!', 'success', 'backupFormMessage');
+                                }
+                            } else {
+                                showMessage('❌ Invalid backup file format', 'error', 'backupFormMessage');
+                            }
+                        } catch (error) {
+                            showMessage('❌ Error parsing backup file', 'error', 'backupFormMessage');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            fileInput.click();
+        }
+
         // ========== GROUPS ==========
         function addGroup() {
             const name = document.getElementById('groupName').value.trim();
@@ -982,6 +1113,7 @@
             renderGroups();
             updateSelectors();
             document.getElementById('groupName').value = '';
+            updateBackupStats();
             showMessage(`✅ Group "${name}" created!`, 'success', 'groupFormMessage');
         }
 
@@ -1025,6 +1157,7 @@
                 saveGroups();
                 renderGroups();
                 updateSelectors();
+                updateBackupStats();
                 showMessage(`🗑️ Group deleted.`, 'success', 'groupFormMessage');
             }
         }
@@ -1046,6 +1179,7 @@
                 renderGroups();
                 updateSelectors();
                 closeGroupModal();
+                updateBackupStats();
                 showMessage(`✅ Group updated!`, 'success', 'groupFormMessage');
             }
         }
@@ -1116,6 +1250,7 @@
                 saveGroups();
                 renderGroups();
                 renderGroupPayment();
+                updateBackupStats();
                 showMessage(`✅ Payment status for "${groups[index].name}" updated to ${newStatus}`, 'success', 'paymentFormMessage');
             }
         }
@@ -1136,6 +1271,7 @@
             updateSelectors();
             document.getElementById('studentName').value = '';
             document.getElementById('rateAmount').value = '';
+            updateBackupStats();
             showMessage(`✅ Student "${name}" added!`, 'success', 'studentFormMessage');
         }
 
@@ -1175,6 +1311,7 @@
                 updateSelectors();
                 updateLessonStats();
                 updateCalendarStats();
+                updateBackupStats();
                 showMessage(`🗑️ Student deleted.`, 'success', 'studentFormMessage');
             }
         }
@@ -1215,6 +1352,7 @@
                 renderLessons();
                 updateLessonStats();
                 updateCalendarStats();
+                updateBackupStats();
                 updateSelectors();
                 closeStudentModal();
                 showMessage(`✅ Student updated!`, 'success', 'studentFormMessage');
@@ -1264,6 +1402,7 @@
             renderLessons();
             updateLessonStats();
             updateCalendarStats();
+            updateBackupStats();
             
             document.getElementById('lessonTopic').value = '';
             document.getElementById('lessonNotes').value = '';
@@ -1286,6 +1425,7 @@
                 renderLessons();
                 updateLessonStats();
                 updateCalendarStats();
+                updateBackupStats();
                 showMessage(`🗑️ Lesson deleted.`, 'success', 'lessonFormMessage');
             }
         }
@@ -1324,7 +1464,7 @@
             document.getElementById('totalEarnings').innerHTML = `$${totalEarnings.toFixed(2)}`;
         }
 
-        // ========== CALENDAR EXPORT - STUDENT NAME ONLY ==========
+        // ========== CALENDAR EXPORT ==========
         function formatICSDate(date) {
             return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
         }
@@ -1354,11 +1494,7 @@ X-WR-CALDESC:Tuition lessons schedule
                 const startDate = new Date(lesson.start);
                 const endDate = new Date(lesson.end);
                 const uid = `${lesson.id}@mrleemath.com`;
-                
-                // ONLY the student name - nothing else
                 const summary = lesson.studentName;
-                
-                // Optional description - can be empty or just notes
                 const description = lesson.notes || '';
                 
                 icsContent += `BEGIN:VEVENT
@@ -1786,6 +1922,7 @@ Total groups: ${groups.length} groups`;
             document.getElementById('analysisView').style.display = mode === 'analysis' ? 'block' : 'none';
             document.getElementById('invoiceView').style.display = mode === 'invoice' ? 'block' : 'none';
             document.getElementById('calendarView').style.display = mode === 'calendar' ? 'block' : 'none';
+            document.getElementById('backupView').style.display = mode === 'backup' ? 'block' : 'none';
             
             if (mode === 'groups') renderGroups();
             if (mode === 'students') renderStudents();
@@ -1805,6 +1942,9 @@ Total groups: ${groups.length} groups`;
             }
             if (mode === 'calendar') {
                 updateCalendarStats();
+            }
+            if (mode === 'backup') {
+                updateBackupStats();
             }
         }
         
@@ -1831,6 +1971,7 @@ Total groups: ${groups.length} groups`;
             renderGroups();
             updateSelectors();
             closeGroupModal();
+            updateBackupStats();
             showMessage(`✅ Group "${name}" created!`, 'success', 'groupFormMessage');
         }
         
@@ -1864,6 +2005,7 @@ Total groups: ${groups.length} groups`;
             renderStudents();
             updateSelectors();
             closeStudentModal();
+            updateBackupStats();
             showMessage(`✅ Student "${name}" added!`, 'success', 'studentFormMessage');
         }
         
