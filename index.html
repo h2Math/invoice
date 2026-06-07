@@ -154,7 +154,7 @@
         <!-- STUDENTS View -->
         <div id="studentsView" style="display:none"><div class="grid-2cols"><div class="card"><div class="card-title">📝 Add Student</div><div id="studentFormMessage" class="success-msg"></div><div class="form-group"><label>Student Name *</label><input type="text" id="studentName" placeholder="e.g., Emma Wong"></div><div class="form-group"><label>Select Parent *</label><select id="studentGroup"><option value="">-- Select Parent --</option></select></div><div class="form-group"><label>Rate Type *</label><div class="rate-group"><select id="rateType"><option value="hourly">💰 Per Hour</option><option value="session">📚 Per Session</option></select><input type="number" id="rateAmount" placeholder="Amount ($)" step="0.01"></div></div><button onclick="addStudent()" class="btn-primary" style="width:100%">✨ Add Student</button></div><div class="card"><div class="card-title">👨‍🎓 Student List</div><div id="studentList" class="student-list"><div style="text-align:center;padding:40px;color:#8892b0">No students yet. Add one!</div></div></div></div></div>
         
-        <!-- CALENDAR View (Add Lesson + Monthly Calendar + Export Button) -->
+        <!-- CALENDAR View -->
         <div id="lessonsView" style="display:none">
             <div class="grid-2cols">
                 <div class="card">
@@ -233,9 +233,51 @@
         function saveStudentEdit() { const id=document.getElementById('editStudentId').value; const idx=students.findIndex(s=>s.id===id); if(idx!==-1){ students[idx]={...students[idx], name:document.getElementById('editStudentName').value.trim(), groupId:document.getElementById('editStudentGroup').value, rateType:document.getElementById('editRateType').value, rateAmount:parseFloat(document.getElementById('editRateAmount').value)}; saveStudents(); for(let l of lessons){ if(l.studentId===id){ const stud=students[idx]; l.earnings=calculateEarnings(stud,l.start,l.end); } } saveLessons(); renderStudents(); renderCalendar(); updateLessonStats(); updateBackupStats(); updateSelectors(); closeStudentModal(); showMessage('Student updated','success','studentFormMessage'); } }
         function closeStudentModal() { document.getElementById('studentModal').style.display='none'; }
         
-        function addLesson() { const sid=document.getElementById('lessonStudent').value; const start=document.getElementById('lessonStart').value; const end=document.getElementById('lessonEnd').value; const topic=document.getElementById('lessonTopic').value; const notes=document.getElementById('lessonNotes').value; if(!sid||!start||!end){ showMessage('Select student and times','error','lessonFormMessage'); return; } if(new Date(start)>=new Date(end)){ showMessage('End time must be after start','error','lessonFormMessage'); return; } const student=students.find(s=>s.id===sid); if(!student){ showMessage('Student not found','error','lessonFormMessage'); return; } const hours=(new Date(end)-new Date(start))/3600000; const earnings=calculateEarnings(student,start,end); lessons.push({id:Date.now().toString(),studentId:sid,studentName:student.name,groupId:student.groupId,start,end,topic,notes,earnings,hours}); saveLessons(); renderCalendar(); updateLessonStats(); updateBackupStats(); document.getElementById('lessonTopic').value=''; document.getElementById('lessonNotes').value=''; showMessage(`✅ Lesson added for ${student.name} - ${hours.toFixed(1)} hrs = $${earnings.toFixed(2)}`,'success','lessonFormMessage'); const now=new Date(); now.setHours(now.getHours()+1); now.setMinutes(0); document.getElementById('lessonStart').value=getDateTimeLocal(now); document.getElementById('lessonStart').dispatchEvent(new Event('change')); }
-        
-        function deleteLessonFromCalendar(lessonId, event) { event.stopPropagation(); if(confirm('Delete this lesson?')){ lessons=lessons.filter(l=>l.id!==lessonId); saveLessons(); renderCalendar(); updateLessonStats(); updateBackupStats(); showMessage('Lesson deleted','success','lessonFormMessage'); } }
+        // FIXED: Proper timezone handling for lessons
+        function addLesson() { 
+            const sid=document.getElementById('lessonStudent').value; 
+            let start=document.getElementById('lessonStart').value; 
+            let end=document.getElementById('lessonEnd').value; 
+            const topic=document.getElementById('lessonTopic').value; 
+            const notes=document.getElementById('lessonNotes').value; 
+            if(!sid||!start||!end){ showMessage('Select student and times','error','lessonFormMessage'); return; } 
+            const startDate = new Date(start);
+            const endDate = new Date(end);
+            if(startDate >= endDate){ showMessage('End time must be after start','error','lessonFormMessage'); return; } 
+            const student=students.find(s=>s.id===sid); 
+            if(!student){ showMessage('Student not found','error','lessonFormMessage'); return; } 
+            
+            // Store as ISO string preserving the exact local time
+            const storedStart = startDate.toISOString();
+            const storedEnd = endDate.toISOString();
+            
+            const hours = (endDate - startDate) / 3600000; 
+            const earnings = calculateEarnings(student, start, end); 
+            lessons.push({
+                id:Date.now().toString(),
+                studentId:sid,
+                studentName:student.name,
+                groupId:student.groupId,
+                start:storedStart,
+                end:storedEnd,
+                topic:topic,
+                notes:notes,
+                earnings:earnings,
+                hours:hours
+            }); 
+            saveLessons(); 
+            renderCalendar(); 
+            updateLessonStats(); 
+            updateBackupStats(); 
+            document.getElementById('lessonTopic').value=''; 
+            document.getElementById('lessonNotes').value=''; 
+            showMessage(`✅ Lesson added for ${student.name} - ${hours.toFixed(1)} hrs = $${earnings.toFixed(2)}`,'success','lessonFormMessage'); 
+            const now=new Date(); 
+            now.setHours(now.getHours()+1); 
+            now.setMinutes(0); 
+            document.getElementById('lessonStart').value=getDateTimeLocal(now); 
+            document.getElementById('lessonStart').dispatchEvent(new Event('change')); 
+        }
         
         function editLessonFromCalendar(lessonId, event) {
             event.stopPropagation();
@@ -250,6 +292,7 @@
             }
         }
         
+        // FIXED: Proper calendar rendering with local date comparison
         function renderCalendar() {
             const container = document.getElementById('calendarViewContainer');
             if (!container) return;
@@ -281,19 +324,27 @@
             }
             
             for (let day = 1; day <= daysInMonth; day++) {
-                const currentDate = new Date(currentCalendarYear, currentCalendarMonth, day);
-                const dateStr = currentDate.toISOString().split('T')[0];
-                const dayLessons = lessons.filter(l => l.start.split('T')[0] === dateStr);
+                // Find lessons for this specific day using local date comparison
+                const dayLessons = lessons.filter(l => {
+                    const lessonDate = new Date(l.start);
+                    return lessonDate.getFullYear() === currentCalendarYear && 
+                           lessonDate.getMonth() === currentCalendarMonth && 
+                           lessonDate.getDate() === day;
+                });
                 
-                calendarHTML += `<div class="calendar-day" data-date="${dateStr}">
+                // Sort lessons by time
+                dayLessons.sort((a, b) => new Date(a.start) - new Date(b.start));
+                
+                calendarHTML += `<div class="calendar-day" data-day="${day}">
                     <div class="day-number">${day}</div>`;
                 
                 for (const lesson of dayLessons) {
-                    const startTime = lesson.start.split('T')[1].substring(0,5);
-                    const endTime = lesson.end.split('T')[1].substring(0,5);
+                    const lessonDate = new Date(lesson.start);
+                    const timeStr = lessonDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
                     calendarHTML += `
                         <div class="calendar-lesson" onclick="editLessonFromCalendar('${lesson.id}', event)">
-                            <span class="lesson-time">${startTime}</span>
+                            <span class="lesson-time">${timeStr}</span>
                             <span class="lesson-student"> ${escapeHtml(lesson.studentName)}</span>
                             <div style="font-size:0.6rem; color:#8892b0;">💰 $${lesson.earnings.toFixed(2)}</div>
                         </div>
@@ -312,7 +363,7 @@
             calendarHTML += `
                     </div>
                     <div class="calendar-legend">
-                        <div class="legend-item"><div class="legend-color"></div><span>Lesson scheduled (click to edit/delete)</span></div>
+                        <div class="legend-item"><div class="legend-color"></div><span>Lesson scheduled (click to edit notes)</span></div>
                     </div>
                 </div>
             `;
@@ -385,11 +436,11 @@
         function formatTime(dt){ return new Date(dt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
         function updateLessonStats() { const tl=document.getElementById('totalLessons'); const te=document.getElementById('totalEarnings'); if(tl) tl.innerHTML=lessons.length; if(te) te.innerHTML=`$${lessons.reduce((s,l)=>s+l.earnings,0).toFixed(2)}`; }
         
-        async function generateAnalysis() { const fd=document.getElementById('analysisFromDate').value; const td=document.getElementById('analysisToDate').value; if(!fd||!td){ showMessage('Select date range','error','analysisFormMessage'); return; } const filtered=lessons.filter(l=>{ const ld=new Date(l.start.split('T')[0]); return ld>=new Date(fd)&&ld<=new Date(td); }); if(filtered.length===0){ showMessage('No lessons found','error','analysisFormMessage'); return; } const groupTotals={}, groupStatus={}, studentTotals={}; let total=0, hours=0; for(const l of filtered){ const g=groups.find(g=>g.id===l.groupId); const gn=g?.name||'Unknown'; groupTotals[gn]=(groupTotals[gn]||0)+l.earnings; groupStatus[gn]=g?.paymentStatus||'unpaid'; studentTotals[l.studentName]={group:gn,earnings:(studentTotals[l.studentName]?.earnings||0)+l.earnings,hours:(studentTotals[l.studentName]?.hours||0)+l.hours,lessons:(studentTotals[l.studentName]?.lessons||0)+1}; total+=l.earnings; hours+=l.hours; } let html=`<div id="analysisContainer" class="analysis-container"><div class="analysis-header"><div class="analysis-title">FEE ANALYSIS & PAYMENT REPORT</div><div class="analysis-dates">Period: ${formatDateForDisplay(fd)} to ${formatDateForDisplay(td)}</div></div><div class="summary-card"><div class="summary-number">$${total.toFixed(2)}</div><div class="summary-label">Total Fees Earned</div><div>📊 ${hours.toFixed(1)} total hours | 📚 ${filtered.length} lessons</div></div><h3>By Parent</h3><table class="analysis-table"><thead><tr><th>Parent</th><th>Total</th><th>%</th><th>Status</th></tr></thead><tbody>`; for(const [gn,amt] of Object.entries(groupTotals).sort((a,b)=>b[1]-a[1])){ const pct=(amt/total*100).toFixed(1); const st=groupStatus[gn]; const cls=st==='paid'?'status-paid':(st==='invoiced'?'status-invoiced':'status-unpaid'); const txt=st==='paid'?'✅ Paid':(st==='invoiced'?'📄 Invoiced':'⚠️ Unpaid'); html+=`<tr><td style="padding:8px">${escapeHtml(gn)}</td><td style="padding:8px">$${amt.toFixed(2)}</td><td style="padding:8px">${pct}%</td><td style="padding:8px"><span class="payment-status-badge ${cls}">${txt}</span></td>`; } html+=`</tbody></table><h3>By Student</h3><table class="analysis-table"><thead><tr><th>Student</th><th>Parent</th><th>Hours</th><th>Lessons</th><th>Total</th></table></thead><tbody>`; for(const [sn,data] of Object.entries(studentTotals).sort((a,b)=>b[1].earnings-a[1].earnings)){ html+=`<tr><td style="padding:8px">${escapeHtml(sn)}</td><td style="padding:8px">${escapeHtml(data.group)}</td><td style="padding:8px">${data.hours.toFixed(1)}</td><td style="padding:8px">${data.lessons}</td><td style="padding:8px">$${data.earnings.toFixed(2)}</td>`; } html+=`</tbody></table><div class="analysis-total"><strong>GRAND TOTAL: $${total.toFixed(2)}</strong></div><div style="font-size:0.7rem;text-align:center;margin-top:20px">Generated ${new Date().toLocaleDateString()}</div></div>`; document.getElementById('analysisPreview').innerHTML=html; document.getElementById('analysisPreview').style.display='block'; document.getElementById('shareAnalysisBtn').style.display='block'; currentAnalysisElement=document.getElementById('analysisContainer'); showMessage('Report generated!','success','analysisFormMessage'); }
+        async function generateAnalysis() { const fd=document.getElementById('analysisFromDate').value; const td=document.getElementById('analysisToDate').value; if(!fd||!td){ showMessage('Select date range','error','analysisFormMessage'); return; } const filtered=lessons.filter(l=>{ const ld=new Date(l.start.split('T')[0]); return ld>=new Date(fd)&&ld<=new Date(td); }); if(filtered.length===0){ showMessage('No lessons found','error','analysisFormMessage'); return; } const groupTotals={}, groupStatus={}, studentTotals={}; let total=0, hours=0; for(const l of filtered){ const g=groups.find(g=>g.id===l.groupId); const gn=g?.name||'Unknown'; groupTotals[gn]=(groupTotals[gn]||0)+l.earnings; groupStatus[gn]=g?.paymentStatus||'unpaid'; studentTotals[l.studentName]={group:gn,earnings:(studentTotals[l.studentName]?.earnings||0)+l.earnings,hours:(studentTotals[l.studentName]?.hours||0)+l.hours,lessons:(studentTotals[l.studentName]?.lessons||0)+1}; total+=l.earnings; hours+=l.hours; } let html=`<div id="analysisContainer" class="analysis-container"><div class="analysis-header"><div class="analysis-title">FEE ANALYSIS & PAYMENT REPORT</div><div class="analysis-dates">Period: ${formatDateForDisplay(fd)} to ${formatDateForDisplay(td)}</div></div><div class="summary-card"><div class="summary-number">$${total.toFixed(2)}</div><div class="summary-label">Total Fees Earned</div><div>📊 ${hours.toFixed(1)} total hours | 📚 ${filtered.length} lessons</div></div><h3>By Parent</h3><table class="analysis-table"><thead><tr><th>Parent</th><th>Total</th><th>%</th><th>Status</th></tr></thead><tbody>`; for(const [gn,amt] of Object.entries(groupTotals).sort((a,b)=>b[1]-a[1])){ const pct=(amt/total*100).toFixed(1); const st=groupStatus[gn]; const cls=st==='paid'?'status-paid':(st==='invoiced'?'status-invoiced':'status-unpaid'); const txt=st==='paid'?'✅ Paid':(st==='invoiced'?'📄 Invoiced':'⚠️ Unpaid'); html+=`<table><td style="padding:8px">${escapeHtml(gn)}</td><td style="padding:8px">$${amt.toFixed(2)}</td><td style="padding:8px">${pct}%</td><td style="padding:8px"><span class="payment-status-badge ${cls}">${txt}</span></td>`; } html+=`</tbody>\\n<h3>By Student</h3><table class="analysis-table"><thead><tr><th>Student</th><th>Parent</th><th>Hours</th><th>Lessons</th><th>Total</th></tr></thead><tbody>`; for(const [sn,data] of Object.entries(studentTotals).sort((a,b)=>b[1].earnings-a[1].earnings)){ html+=`<tr><td style="padding:8px">${escapeHtml(sn)}</td><td style="padding:8px">${escapeHtml(data.group)}</td><td style="padding:8px">${data.hours.toFixed(1)}</td><td style="padding:8px">${data.lessons}</td><td style="padding:8px">$${data.earnings.toFixed(2)}</td>`; } html+=`</tbody>\\n<div class="analysis-total"><strong>GRAND TOTAL: $${total.toFixed(2)}</strong></div><div style="font-size:0.7rem;text-align:center;margin-top:20px">Generated ${new Date().toLocaleDateString()}</div></div>`; document.getElementById('analysisPreview').innerHTML=html; document.getElementById('analysisPreview').style.display='block'; document.getElementById('shareAnalysisBtn').style.display='block'; currentAnalysisElement=document.getElementById('analysisContainer'); showMessage('Report generated!','success','analysisFormMessage'); }
         async function shareAnalysis() { if(!currentAnalysisElement){ showMessage('Generate report first','error','analysisFormMessage'); return; } showMessage('Capturing...','success','analysisFormMessage'); try{ const canvas=await html2canvas(currentAnalysisElement,{scale:2,backgroundColor:'#fff'}); canvas.toBlob(async(blob)=>{ const file=new File([blob],'analysis.png',{type:'image/png'}); if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){ try{ await navigator.share({title:'Fee Analysis',files:[file]}); showMessage('Report shared!','success','analysisFormMessage'); }catch(e){ downloadAnalysisImage(canvas); } }else{ downloadAnalysisImage(canvas); } },'image/png'); }catch(e){ showMessage('Error capturing report','error','analysisFormMessage'); } }
         function downloadAnalysisImage(c){ const a=document.createElement('a'); a.download='analysis.png'; a.href=c.toDataURL(); a.click(); showMessage('Image downloaded','success','analysisFormMessage'); }
         
-        async function generateInvoice() { const gid=document.getElementById('invoiceGroup').value; const fd=document.getElementById('invoiceFromDate').value; const td=document.getElementById('invoiceToDate').value; if(!gid||!fd||!td){ showMessage('Select parent and date range','error','invoiceFormMessage'); return; } let filtered=lessons.filter(l=>{ const ld=new Date(l.start.split('T')[0]); return l.groupId===gid&&ld>=new Date(fd)&&ld<=new Date(td); }); if(filtered.length===0){ showMessage('No lessons found','error','invoiceFormMessage'); return; } filtered.sort((a,b)=>new Date(a.start)-new Date(b.start)); const total=filtered.reduce((s,l)=>s+l.earnings,0); const hours=filtered.reduce((s,l)=>s+l.hours,0); let html=`<div id="invoiceContainer" class="invoice-container"><div class="invoice-header"><div class="invoice-title">TUITION INVOICE</div><div class="invoice-subtitle">Mr Lee Math Tuition</div><div class="invoice-dates">Period: ${formatDateForDisplay(fd)} to ${formatDateForDisplay(td)}</div></div><table class="invoice-table"><thead><tr><th>Date</th><th>Student</th><th>Time</th><th>Duration</th><th>Amount</th></tr></thead><tbody>`; for(const l of filtered){ html+=`<tr><td style="padding:8px">${formatDateForDisplay(l.start.split('T')[0])}</td><td style="padding:8px">${escapeHtml(l.studentName)}</td><td style="padding:8px">${formatTime(l.start)} - ${formatTime(l.end)}</td><td style="padding:8px">${l.hours.toFixed(1)} hr${l.hours!==1?'s':''}</td><td style="padding:8px">$${l.earnings.toFixed(2)}</td>`; } html+=`</tbody><table><div class="invoice-total"><p><strong>Total Hours:</strong> ${hours.toFixed(1)} hrs</p><p><strong>Total Amount:</strong> $${total.toFixed(2)}</p></div><div style="margin-top:20px;font-size:0.7rem;text-align:center;color:#666;">Thank you.</div></div>`; document.getElementById('invoicePreview').innerHTML=html; document.getElementById('invoicePreview').style.display='block'; document.getElementById('shareBtn').style.display='block'; currentInvoiceElement=document.getElementById('invoiceContainer'); showMessage('Invoice generated!','success','invoiceFormMessage'); }
+        async function generateInvoice() { const gid=document.getElementById('invoiceGroup').value; const fd=document.getElementById('invoiceFromDate').value; const td=document.getElementById('invoiceToDate').value; if(!gid||!fd||!td){ showMessage('Select parent and date range','error','invoiceFormMessage'); return; } let filtered=lessons.filter(l=>{ const ld=new Date(l.start.split('T')[0]); return l.groupId===gid&&ld>=new Date(fd)&&ld<=new Date(td); }); if(filtered.length===0){ showMessage('No lessons found','error','invoiceFormMessage'); return; } filtered.sort((a,b)=>new Date(a.start)-new Date(b.start)); const total=filtered.reduce((s,l)=>s+l.earnings,0); const hours=filtered.reduce((s,l)=>s+l.hours,0); let html=`<div id="invoiceContainer" class="invoice-container"><div class="invoice-header"><div class="invoice-title">TUITION INVOICE</div><div class="invoice-subtitle">Mr Lee Math Tuition</div><div class="invoice-dates">Period: ${formatDateForDisplay(fd)} to ${formatDateForDisplay(td)}</div></div><table class="invoice-table"><thead><tr><th>Date</th><th>Student</th><th>Time</th><th>Duration</th><th>Amount</th></tr></thead><tbody>`; for(const l of filtered){ html+=`<tr><td style="padding:8px">${formatDateForDisplay(l.start.split('T')[0])}</td><td style="padding:8px">${escapeHtml(l.studentName)}</td><td style="padding:8px">${formatTime(l.start)} - ${formatTime(l.end)}</td><td style="padding:8px">${l.hours.toFixed(1)} hr${l.hours!==1?'s':''}</td><td style="padding:8px">$${l.earnings.toFixed(2)}</td>`; } html+=`</tbody>\\n<div class="invoice-total"><p><strong>Total Hours:</strong> ${hours.toFixed(1)} hrs</p><p><strong>Total Amount:</strong> $${total.toFixed(2)}</p></div><div style="margin-top:20px;font-size:0.7rem;text-align:center;color:#666;">Thank you.</div></div>`; document.getElementById('invoicePreview').innerHTML=html; document.getElementById('invoicePreview').style.display='block'; document.getElementById('shareBtn').style.display='block'; currentInvoiceElement=document.getElementById('invoiceContainer'); showMessage('Invoice generated!','success','invoiceFormMessage'); }
         
         async function shareInvoice() {
             if (!currentInvoiceElement) { showMessage('Generate invoice first', 'error', 'invoiceFormMessage'); return; }
