@@ -117,10 +117,10 @@
         <div id="paymentView" style="display:none"><div class="card"><div class="card-title">💰 Parent Payment Status</div><div id="paymentFormMessage" class="success-msg"></div><div class="grid-2cols" style="margin-bottom:20px"><div class="form-group"><label>Select Parent</label><select id="paymentGroupFilter" onchange="renderGroupPayment()"><option value="">-- Select Parent --</option></select></div><div class="form-group"><label>Payment Status</label><select id="groupPaymentStatus"><option value="unpaid">⚠️ Unpaid</option><option value="paid">✅ Paid</option><option value="invoiced">📄 Invoiced</option></select></div></div><button onclick="updateGroupPaymentStatus()" class="btn-primary" style="width:100%;margin-bottom:20px">💾 Update Payment Status</button><div id="groupPaymentInfo" style="display:none"><div class="stats-bar"><div class="stat"><div class="stat-number" id="groupTotalLessons">0</div><div class="stat-label">Lessons</div></div><div class="stat"><div class="stat-number" id="groupTotalAmount">$0</div><div class="stat-label">Total Amount</div></div><div class="stat"><div class="stat-number" id="groupPaymentBadge"></div><div class="stat-label">Current Status</div></div></div></div><div id="groupPaymentList" class="lesson-list"><div style="text-align:center;padding:40px;color:#8892b0">Select a parent to view payment status</div></div></div></div>
         <div id="analysisView" style="display:none"><div class="card"><div class="card-title">📊 Fee Analysis & Payment Report</div><div id="analysisFormMessage" class="success-msg"></div><div class="grid-2cols" style="margin-bottom:20px"><div class="form-group"><label>From Date *</label><input type="date" id="analysisFromDate"></div><div class="form-group"><label>To Date *</label><input type="date" id="analysisToDate"></div></div><div class="button-group"><button onclick="generateAnalysis()" class="btn-primary" style="flex:1">📊 Generate Report</button><button id="shareAnalysisBtn" onclick="shareAnalysis()" class="btn-share" style="flex:1;display:none">📤 Share Report</button></div><div id="analysisPreview" style="display:none;margin-top:20px"></div></div></div>
         <div id="invoiceView" style="display:none"><div class="card"><div class="card-title">🧾 Generate Invoice</div><div id="invoiceFormMessage" class="success-msg"></div><div class="grid-2cols" style="margin-bottom:20px"><div class="form-group"><label>Select Parent *</label><select id="invoiceGroup"><option value="">-- Select Parent --</option></select></div><div class="form-group"><label>From Date *</label><input type="date" id="invoiceFromDate"></div><div class="form-group"><label>To Date *</label><input type="date" id="invoiceToDate"></div></div><div class="button-group"><button onclick="generateInvoice()" class="btn-primary" style="flex:1">📄 Generate Invoice</button><button id="shareBtn" onclick="shareInvoice()" class="btn-share" style="flex:1;display:none">📤 Share Invoice</button></div><div id="invoicePreview" style="display:none;margin-top:20px"></div></div></div>
-        <div id="calendarView" style="display:none"><div class="card"><div class="card-title">📅 Sync All Lessons to Apple Calendar</div><div id="calendarFormMessage" class="success-msg"></div><div class="success-box" style="margin-bottom:20px"><strong>📱 Export all lessons to iPhone Calendar:</strong><ul style="margin-top:10px;margin-left:20px"><li>Click <strong>"Export to .ics"</strong> to download all lessons</li><li>On iPhone, you will be prompted to save or share the file</li><li>Tap the .ics file → <strong>"Add to Calendar"</strong></li><li>Select your calendar → Tap <strong>"Add"</strong></li></ul></div><div class="stats-bar" style="margin-bottom:20px"><div class="stat"><div class="stat-number" id="totalLessonsForCalendar">0</div><div class="stat-label">Total Lessons</div></div><div class="stat"><div class="stat-number" id="totalStudentsForCalendar">0</div><div class="stat-label">Students</div></div><div class="stat"><div class="stat-number" id="totalGroupsForCalendar">0</div><div class="stat-label">Parents</div></div></div><button onclick="exportAllToCalendar()" class="btn-calendar" style="width:100%;margin-bottom:10px">📅 Export All Lessons to .ics</button><button onclick="copyCalendarInstructions()" class="btn-primary" style="width:100%">📋 Copy Instructions</button></div></div>
+        <div id="calendarView" style="display:none"><div class="card"><div class="card-title">📅 Sync All Lessons to Apple Calendar</div><div id="calendarFormMessage" class="success-msg"></div><div class="success-box" style="margin-bottom:20px"><strong>📱 Export all lessons to iPhone Calendar:</strong><ul style="margin-top:10px;margin-left:20px"><li>Click <strong>"Export to Calendar"</strong> below</li><li>Calendar app will open automatically</li><li>Tap <strong>"Add All"</strong> to save all lessons</li><li>Select your calendar → Tap <strong>"Done"</strong></li></ul></div><div class="stats-bar" style="margin-bottom:20px"><div class="stat"><div class="stat-number" id="totalLessonsForCalendar">0</div><div class="stat-label">Total Lessons</div></div><div class="stat"><div class="stat-number" id="totalStudentsForCalendar">0</div><div class="stat-label">Students</div></div><div class="stat"><div class="stat-number" id="totalGroupsForCalendar">0</div><div class="stat-label">Parents</div></div></div><button onclick="exportAllToCalendar()" class="btn-calendar" style="width:100%;margin-bottom:10px">📅 Export to Calendar</button></div></div>
         <div id="backupView" style="display:none"><div class="card"><div class="card-title">💾 Backup & Restore Data</div><div id="backupFormMessage" class="success-msg"></div><div class="backup-info"><strong>📊 Current Data Summary:</strong><br>Parents: <span id="backupGroupCount">0</span><br>Students: <span id="backupStudentCount">0</span><br>Lessons: <span id="backupLessonCount">0</span></div><div class="success-box" style="margin-bottom:20px"><strong>💾 How to Backup:</strong><ul style="margin-top:10px;margin-left:20px"><li>Click <strong>"Export to File"</strong> to save your data as a JSON file</li><li>Save the file to your computer, iCloud Drive, Google Drive, or email it to yourself</li></ul></div><div class="success-box" style="margin-bottom:20px"><strong>🔄 How to Restore:</strong><ul style="margin-top:10px;margin-left:20px"><li>Click <strong>"Import from File"</strong> to select a previously saved backup file</li><li><strong>⚠️ Warning:</strong> This will replace ALL current data</li></ul></div><div class="button-group"><button onclick="exportToFile()" class="btn-backup" style="flex:1">📁 Export to File</button><button onclick="importFromFile()" class="btn-primary" style="flex:1">📂 Import from File</button></div></div></div>
 
-        <div class="instructions"><h3>📖 How It Works</h3><div class="success-box"><strong>✅ Features:</strong><ul style="margin-top:10px;margin-left:20px"><li>💾 <strong>Export to File</strong> - Save your data as a JSON backup file</li><li>📂 <strong>Import from File</strong> - Restore data from a backup file</li><li>💰 <strong>Parent Payment Status</strong> - Set status: Unpaid / Paid / Invoiced</li><li>📊 <strong>Analysis Report</strong> - Includes payment history by parent</li><li>🧾 <strong>Invoices</strong> - Share with custom text message & simple filename</li><li>📅 <strong>Add to Calendar</strong> - Export lessons to Apple Calendar</li></ul></div></div>
+        <div class="instructions"><h3>📖 How It Works</h3><div class="success-box"><strong>✅ Features:</strong><ul style="margin-top:10px;margin-left:20px"><li>💾 <strong>Export to File</strong> - Save your data as a JSON backup file</li><li>📂 <strong>Import from File</strong> - Restore data from a backup file</li><li>💰 <strong>Parent Payment Status</strong> - Set status: Unpaid / Paid / Invoiced</li><li>📊 <strong>Analysis Report</strong> - Includes payment history by parent</li><li>🧾 <strong>Invoices</strong> - Share with custom text message & simple filename</li><li>📅 <strong>Add to Calendar</strong> - Export lessons directly to Apple Calendar</li></ul></div></div>
         <div class="status-text">Last updated: <span id="timestamp">--</span></div>
     </div>
 
@@ -229,44 +229,16 @@
             }
         }
         
-        // Calendar export - iOS Safari compatible
+        // CALENDAR EXPORT - RESTORED to open Calendar directly
         function escapeICS(str) { 
             if (!str) return ''; 
-            return str.replace(/[\\;,\n]/g, m => ({ '\\': '\\\\', ';': '\\;', ',': '\\,', '\n': '\\n' }[m] || m)); 
-        }
-        
-        function downloadICSFile(blob, filename) {
-            // Try using share API first (works best on iOS)
-            if (navigator.share) {
-                const file = new File([blob], filename, { type: 'text/calendar' });
-                navigator.share({
-                    title: 'Tuition Schedule',
-                    files: [file]
-                }).then(() => {
-                    showMessage('Calendar file shared!', 'success', 'calendarFormMessage');
-                }).catch((err) => {
-                    // If share fails or user cancels, try download
-                    if (err.name !== 'AbortError') {
-                        fallbackDownload(blob, filename);
-                    }
-                });
-            } else {
-                fallbackDownload(blob, filename);
-            }
-        }
-        
-        function fallbackDownload(blob, filename) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 100);
-            showMessage(`Exported ${lessons.length} lessons!`, 'success', 'calendarFormMessage');
+            return str.replace(/[\\;,\n]/g, function(match) {
+                if (match === '\\') return '\\\\';
+                if (match === ';') return '\\;';
+                if (match === ',') return '\\,';
+                if (match === '\n') return '\\n';
+                return match;
+            });
         }
         
         function exportAllToCalendar() { 
@@ -275,24 +247,39 @@
                 return; 
             } 
             
-            let ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Mr Lee Math Tuition//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:Tuition Schedule\n'; 
+            let icsContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Mr Lee Math Tuition//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:Tuition Schedule\n'; 
             
             for(const l of lessons){ 
-                const s = new Date(l.start); 
-                const e = new Date(l.end); 
-                const fmt = d => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; 
-                ics += `BEGIN:VEVENT\nUID:${l.id}@mrleemath.com\nDTSTAMP:${fmt(new Date())}\nDTSTART:${fmt(s)}\nDTEND:${fmt(e)}\nSUMMARY:${escapeICS(l.studentName)}\nDESCRIPTION:${escapeICS(l.notes || '')}\nEND:VEVENT\n`; 
+                const startDate = new Date(l.start); 
+                const endDate = new Date(l.end); 
+                
+                const formatICS = (date) => {
+                    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                };
+                
+                const summary = l.studentName || 'Tuition Lesson';
+                const description = l.notes || '';
+                
+                icsContent += `BEGIN:VEVENT\n`;
+                icsContent += `UID:${l.id}@mrleemath.com\n`;
+                icsContent += `DTSTAMP:${formatICS(new Date())}\n`;
+                icsContent += `DTSTART:${formatICS(startDate)}\n`;
+                icsContent += `DTEND:${formatICS(endDate)}\n`;
+                icsContent += `SUMMARY:${escapeICS(summary)}\n`;
+                icsContent += `DESCRIPTION:${escapeICS(description)}\n`;
+                icsContent += `END:VEVENT\n`;
             } 
             
-            ics += 'END:VCALENDAR'; 
-            const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' }); 
-            const filename = `lessons_${new Date().toISOString().split('T')[0]}.ics`;
-            downloadICSFile(blob, filename);
-        }
-        
-        function copyCalendarInstructions() { 
-            navigator.clipboard.writeText('1. Click "Export to .ics"\n2. Tap "Save to Files" or share to yourself\n3. Tap the .ics file → "Add to Calendar"\n4. Select your calendar → Tap "Add"'); 
-            showMessage('Instructions copied!','success','calendarFormMessage'); 
+            icsContent += 'END:VCALENDAR';
+            
+            // This creates a data URL that iOS Safari recognizes and opens Calendar
+            const encodedData = encodeURIComponent(icsContent);
+            const url = 'data:text/calendar;charset=utf8,' + encodedData;
+            
+            // Open in Safari - iOS will detect .ics data and open Calendar app
+            window.location.href = url;
+            
+            showMessage(`Opening Calendar with ${lessons.length} lessons...`, 'success', 'calendarFormMessage');
         }
         
         function getAllData() { return {groups,students,lessons,exportDate:new Date().toISOString()}; }
