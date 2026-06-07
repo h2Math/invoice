@@ -655,7 +655,7 @@
         <!-- INVOICE View -->
         <div id="invoiceView" style="display: none;">
             <div class="card">
-                <div class="card-title">🧾 Generate Family Invoice</div>
+                <div class="card-title">🧾 Generate Invoice</div>
                 <div id="invoiceFormMessage" class="success-msg" style="display: none;"></div>
                 <div class="grid-2cols" style="margin-bottom: 20px;">
                     <div class="form-group">
@@ -748,7 +748,7 @@
                     <li>📂 <strong>Import from File</strong> - Restore data from a backup file</li>
                     <li>💰 <strong>Family Payment Status</strong> - Set status: Unpaid / Paid / Invoiced</li>
                     <li>📊 <strong>Analysis Report</strong> - Includes payment history by family</li>
-                    <li>🧾 <strong>Invoices</strong> - Generate shareable invoices (family name not shown on invoice)</li>
+                    <li>🧾 <strong>Invoices</strong> - Generate shareable invoices (family name hidden)</li>
                     <li>📅 <strong>Add to Calendar</strong> - Export lessons to Apple Calendar</li>
                 </ul>
             </div>
@@ -1157,11 +1157,11 @@
                 const status = groupPaymentStatus[groupName];
                 const statusClass = status === 'paid' ? 'status-paid' : (status === 'invoiced' ? 'status-invoiced' : 'status-unpaid');
                 const statusText = status === 'paid' ? '✅ Paid' : (status === 'invoiced' ? '📄 Invoiced' : '⚠️ Unpaid');
-                analysisHTML += `<tr><td>${escapeHtml(groupName)}</td><td>$${total.toFixed(2)}</td><td>${percentage}%</td><td><span class="payment-status-badge ${statusClass}">${statusText}</span></td></tr>`;
+                analysisHTML += `<td><td style="padding: 8px;">${escapeHtml(groupName)}</td><td style="padding: 8px;">$${total.toFixed(2)}</td><td style="padding: 8px;">${percentage}%</td><td style="padding: 8px;"><span class="payment-status-badge ${statusClass}">${statusText}</span></td></tr>`;
             }
             analysisHTML += `</tbody></table><h3 style="margin:20px 0 10px 0;">By Student</h3><table class="analysis-table"><thead><tr><th>Student</th><th>Family</th><th>Hours</th><th>Lessons</th><th>Total Fees</th></tr></thead><tbody>`;
             for (const [studentName, data] of Object.entries(studentTotals).sort((a, b) => b[1].earnings - a[1].earnings)) {
-                analysisHTML += `<tr><td>${escapeHtml(studentName)}</td><td>${escapeHtml(data.group)}</td><td>${data.hours.toFixed(1)}</td><td>${data.lessons}</td><td>$${data.earnings.toFixed(2)}</td></tr>`;
+                analysisHTML += `<tr><td style="padding: 8px;">${escapeHtml(studentName)}</td><td style="padding: 8px;">${escapeHtml(data.group)}</td><td style="padding: 8px;">${data.hours.toFixed(1)}</td><td style="padding: 8px;">${data.lessons}</td><td style="padding: 8px;">$${data.earnings.toFixed(2)}</td></tr>`;
             }
             analysisHTML += `</tbody></table><div class="analysis-total"><p><strong>GRAND TOTAL: $${overallTotal.toFixed(2)}</strong></p></div><div style="margin-top:20px;font-size:0.7rem;text-align:center;color:#666;">Generated on ${new Date().toLocaleDateString()}</div></div>`;
             const preview = document.getElementById('analysisPreview');
@@ -1192,7 +1192,7 @@
 
         function downloadAnalysisImage(canvas) { const link = document.createElement('a'); link.download = 'fee_analysis.png'; link.href = canvas.toDataURL(); link.click(); showMessage('📸 Report image downloaded!', 'success', 'analysisFormMessage'); }
 
-        // INVOICE functions - FAMILY LINE REMOVED
+        // INVOICE functions - NO FAMILY NAME DISPLAYED
         async function generateInvoice() {
             const groupId = document.getElementById('invoiceGroup').value;
             const fromDate = document.getElementById('invoiceFromDate').value;
@@ -1203,12 +1203,12 @@
             filteredLessons.sort((a, b) => new Date(a.start) - new Date(b.start));
             const totalEarnings = filteredLessons.reduce((sum, l) => sum + l.earnings, 0);
             const totalHours = filteredLessons.reduce((sum, l) => sum + l.hours, 0);
-            // REMOVED: The line that showed family name
-            let invoiceHTML = `<div id="invoiceContainer" class="invoice-container"><div class="invoice-header"><div class="invoice-title">TUITION INVOICE</div><div class="invoice-subtitle">Mr Lee Math Tuition</div><div class="invoice-dates">Period: ${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}</div></div><table class="invoice-table"><thead><tr><th>Day</th><th>Student</th><th>Time</th><th>Hours</th><th>Amount</th></tr></thead><tbody>`;
+            // INVOICE DOES NOT SHOW FAMILY NAME - only period and lesson details
+            let invoiceHTML = `<div id="invoiceContainer" class="invoice-container"><div class="invoice-header"><div class="invoice-title">TUITION INVOICE</div><div class="invoice-subtitle">Mr Lee Math Tuition</div><div class="invoice-dates">Period: ${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}</div></div><table class="invoice-table"><thead><tr><th>Date</th><th>Student</th><th>Time</th><th>Duration</th><th>Amount</th></tr></thead><tbody>`;
             for (const lesson of filteredLessons) {
-                invoiceHTML += `<tr><td>${formatDateForDisplay(lesson.start.split('T')[0])}</td><td>${escapeHtml(lesson.studentName)}</td><td>${formatTime(lesson.start)} - ${formatTime(lesson.end)}</td><td>${lesson.hours.toFixed(1)}</td><td>$${lesson.earnings.toFixed(2)}</td></tr>`;
+                invoiceHTML += `<tr><td style="padding: 8px;">${formatDateForDisplay(lesson.start.split('T')[0])}</td><td style="padding: 8px;">${escapeHtml(lesson.studentName)}</td><td style="padding: 8px;">${formatTime(lesson.start)} - ${formatTime(lesson.end)}</td><td style="padding: 8px;">${lesson.hours.toFixed(1)} hr${lesson.hours !== 1 ? 's' : ''}</td><td style="padding: 8px;">$${lesson.earnings.toFixed(2)}</td></tr>`;
             }
-            invoiceHTML += `</tbody></table><div class="invoice-total"><p><strong>Total Hours:</strong> ${totalHours.toFixed(1)} hrs</p><p><strong>Balance Due:</strong> $${totalEarnings.toFixed(2)}</p></div><div style="margin-top:20px;font-size:0.7rem;text-align:center;color:#666;">Thank you!</div></div>`;
+            invoiceHTML += `</tbody></table><div class="invoice-total"><p><strong>Total Hours:</strong> ${totalHours.toFixed(1)} hrs</p><p><strong>Total Amount:</strong> $${totalEarnings.toFixed(2)}</p></div><div style="margin-top:20px;font-size:0.7rem;text-align:center;color:#666;">Thank you for your business!</div></div>`;
             const preview = document.getElementById('invoicePreview');
             if (preview) {
                 preview.innerHTML = invoiceHTML;
