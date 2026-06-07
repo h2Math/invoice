@@ -357,15 +357,11 @@
             padding-bottom: 10px;
             border-bottom: 2px solid #00d09c;
         }
-        .invoice-title, .analysis-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #00d09c;
-        }
         .invoice-subtitle {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 5px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #00d09c;
+            margin-bottom: 5px;
         }
         .invoice-dates, .analysis-dates {
             font-size: 0.75rem;
@@ -1158,9 +1154,9 @@
                 const status = groupPaymentStatus[groupName];
                 const statusClass = status === 'paid' ? 'status-paid' : (status === 'invoiced' ? 'status-invoiced' : 'status-unpaid');
                 const statusText = status === 'paid' ? '✅ Paid' : (status === 'invoiced' ? '📄 Invoiced' : '⚠️ Unpaid');
-                analysisHTML += `<tr><td style="padding: 8px;">${escapeHtml(groupName)}</td><td style="padding: 8px;">$${total.toFixed(2)}</td><td style="padding: 8px;">${percentage}%</td><td style="padding: 8px;"><span class="payment-status-badge ${statusClass}">${statusText}</span></td></tr>`;
+                analysisHTML += `<tr><td style="padding: 8px;">${escapeHtml(groupName)}</td><td style="padding: 8px;">$${total.toFixed(2)}</td><td style="padding: 8px;">${percentage}%</td><td style="padding: 8px;"><span class="payment-status-badge ${statusClass}">${statusText}</span>NonNull</td></tr>`;
             }
-            analysisHTML += `</tbody><tr><h3 style="margin:20px 0 10px 0;">By Student</h3><table class="analysis-table"><thead><tr><th>Student</th><th>Family</th><th>Hours</th><th>Lessons</th><th>Total Fees</th></tr></thead><tbody>`;
+            analysisHTML += `</tbody></table><h3 style="margin:20px 0 10px 0;">By Student</h3><table class="analysis-table"><thead><tr><th>Student</th><th>Family</th><th>Hours</th><th>Lessons</th><th>Total Fees</th></tr></thead><tbody>`;
             for (const [studentName, data] of Object.entries(studentTotals).sort((a, b) => b[1].earnings - a[1].earnings)) {
                 analysisHTML += `<tr><td style="padding: 8px;">${escapeHtml(studentName)}</td><td style="padding: 8px;">${escapeHtml(data.group)}</td><td style="padding: 8px;">${data.hours.toFixed(1)}</td><td style="padding: 8px;">${data.lessons}</td><td style="padding: 8px;">$${data.earnings.toFixed(2)}</td></tr>`;
             }
@@ -1193,7 +1189,7 @@
 
         function downloadAnalysisImage(canvas) { const link = document.createElement('a'); link.download = 'fee_analysis.png'; link.href = canvas.toDataURL(); link.click(); showMessage('📸 Report image downloaded!', 'success', 'analysisFormMessage'); }
 
-        // INVOICE functions - NO "TUITION INVOICE" title, just period and table
+        // INVOICE functions - COMPLETELY CLEAN, NO TITLE TEXT
         async function generateInvoice() {
             const groupId = document.getElementById('invoiceGroup').value;
             const fromDate = document.getElementById('invoiceFromDate').value;
@@ -1204,7 +1200,7 @@
             filteredLessons.sort((a, b) => new Date(a.start) - new Date(b.start));
             const totalEarnings = filteredLessons.reduce((sum, l) => sum + l.earnings, 0);
             const totalHours = filteredLessons.reduce((sum, l) => sum + l.hours, 0);
-            // REMOVED "TUITION INVOICE" title completely
+            // COMPLETELY CLEAN INVOICE - no "TUITION INVOICE" or any title
             let invoiceHTML = `<div id="invoiceContainer" class="invoice-container"><div class="invoice-header"><div class="invoice-subtitle">Mr Lee Math Tuition</div><div class="invoice-dates">Period: ${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}</div></div><table class="invoice-table"><thead><tr><th>Date</th><th>Student</th><th>Time</th><th>Duration</th><th>Amount</th></tr></thead><tbody>`;
             for (const lesson of filteredLessons) {
                 invoiceHTML += `<tr><td style="padding: 8px;">${formatDateForDisplay(lesson.start.split('T')[0])}</td><td style="padding: 8px;">${escapeHtml(lesson.studentName)}</td><td style="padding: 8px;">${formatTime(lesson.start)} - ${formatTime(lesson.end)}</td><td style="padding: 8px;">${lesson.hours.toFixed(1)} hr${lesson.hours !== 1 ? 's' : ''}</td><td style="padding: 8px;">$${lesson.earnings.toFixed(2)}</td></tr>`;
@@ -1260,7 +1256,7 @@
                 if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
                     try {
                         await navigator.share({
-                            title: 'Tuition Invoice',
+                            title: 'Invoice',
                             files: [pdfFile]
                         });
                         showMessage('✅ Invoice shared as PDF!', 'success', 'invoiceFormMessage');
