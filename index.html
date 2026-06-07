@@ -610,7 +610,7 @@
                     </div>
                     <div class="form-group">
                         <label>Payment Status</label>
-                        <select id="groupPaymentStatus" onchange="updateGroupPaymentStatus()">
+                        <select id="groupPaymentStatus">
                             <option value="unpaid">⚠️ Unpaid</option>
                             <option value="paid">✅ Paid</option>
                             <option value="invoiced">📄 Invoiced</option>
@@ -882,6 +882,7 @@
 
         function renderGroups() {
             const container = document.getElementById('groupList');
+            if (!container) return;
             if (groups.length === 0) {
                 container.innerHTML = '<div style="text-align: center; padding: 40px; color: #8892b0;">👥 No families yet. Create one!</div>';
                 return;
@@ -953,6 +954,7 @@
 
         function renderStudents() {
             const container = document.getElementById('studentList');
+            if (!container) return;
             if (students.length === 0) {
                 container.innerHTML = '<div style="text-align: center; padding: 40px; color: #8892b0;">👨‍🎓 No students yet. Add one!</div>';
                 return;
@@ -986,8 +988,10 @@
             document.getElementById('editRateType').value = s.rateType;
             document.getElementById('editRateAmount').value = s.rateAmount;
             const grpSel = document.getElementById('editStudentGroup');
-            grpSel.innerHTML = '<option value="">-- Select Family --</option>';
-            groups.forEach(g => { grpSel.innerHTML += `<option value="${g.id}" ${g.id === s.groupId ? 'selected' : ''}>${g.name}</option>`; });
+            if (grpSel) {
+                grpSel.innerHTML = '<option value="">-- Select Family --</option>';
+                groups.forEach(g => { grpSel.innerHTML += `<option value="${g.id}" ${g.id === s.groupId ? 'selected' : ''}>${g.name}</option>`; });
+            }
             document.getElementById('studentModal').style.display = 'flex';
         }
 
@@ -1022,6 +1026,7 @@
             if (!studentId || !start || !end) { showMessage('Please select a student and lesson times', 'error', 'lessonFormMessage'); return; }
             if (new Date(start) >= new Date(end)) { showMessage('End time must be after start time', 'error', 'lessonFormMessage'); return; }
             const student = students.find(s => s.id === studentId);
+            if (!student) { showMessage('Student not found', 'error', 'lessonFormMessage'); return; }
             const hours = (new Date(end) - new Date(start)) / (1000 * 3600);
             const earnings = calculateEarnings(student, start, end);
             const newLesson = { id: Date.now().toString(), studentId: studentId, studentName: student.name, groupId: student.groupId, start: start, end: end, topic: topic, notes: notes, earnings: earnings, hours: hours };
@@ -1054,6 +1059,7 @@
 
         function renderLessons() {
             const container = document.getElementById('lessonList');
+            if (!container) return;
             if (lessons.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 40px; color: #8892b0;">📚 No lessons yet. Add one!</div>'; return; }
             const sorted = [...lessons].sort((a, b) => new Date(b.start) - new Date(a.start));
             container.innerHTML = sorted.map(l => {
@@ -1064,16 +1070,20 @@
         }
 
         function updateLessonStats() {
-            document.getElementById('totalLessons').innerHTML = lessons.length;
-            document.getElementById('totalEarnings').innerHTML = `$${lessons.reduce((s, l) => s + l.earnings, 0).toFixed(2)}`;
+            const totalLessonsEl = document.getElementById('totalLessons');
+            const totalEarningsEl = document.getElementById('totalEarnings');
+            if (totalLessonsEl) totalLessonsEl.innerHTML = lessons.length;
+            if (totalEarningsEl) totalEarningsEl.innerHTML = `$${lessons.reduce((s, l) => s + l.earnings, 0).toFixed(2)}`;
         }
 
         // PAYMENT STATUS functions
         function renderGroupPayment() {
             const groupId = document.getElementById('paymentGroupFilter').value;
             if (!groupId) {
-                document.getElementById('groupPaymentList').innerHTML = '<div style="text-align: center; padding: 40px; color: #8892b0;">Select a family to view payment status</div>';
-                document.getElementById('groupPaymentInfo').style.display = 'none';
+                const paymentList = document.getElementById('groupPaymentList');
+                if (paymentList) paymentList.innerHTML = '<div style="text-align: center; padding: 40px; color: #8892b0;">Select a family to view payment status</div>';
+                const paymentInfo = document.getElementById('groupPaymentInfo');
+                if (paymentInfo) paymentInfo.style.display = 'none';
                 return;
             }
             const group = groups.find(g => g.id === groupId);
@@ -1081,14 +1091,24 @@
             const totalAmount = groupLessons.reduce((s, l) => s + l.earnings, 0);
             const statusClass = group?.paymentStatus === 'paid' ? 'status-paid' : (group?.paymentStatus === 'invoiced' ? 'status-invoiced' : 'status-unpaid');
             const statusText = group?.paymentStatus === 'paid' ? '✅ Paid' : (group?.paymentStatus === 'invoiced' ? '📄 Invoiced' : '⚠️ Unpaid');
-            document.getElementById('groupTotalLessons').innerHTML = groupLessons.length;
-            document.getElementById('groupTotalAmount').innerHTML = `$${totalAmount.toFixed(2)}`;
-            document.getElementById('groupPaymentBadge').innerHTML = `<span class="payment-status-badge ${statusClass}">${statusText}</span>`;
-            document.getElementById('groupPaymentInfo').style.display = 'flex';
-            document.getElementById('groupPaymentStatus').value = group?.paymentStatus || 'unpaid';
-            if (groupLessons.length === 0) { document.getElementById('groupPaymentList').innerHTML = '<div style="text-align: center; padding: 40px; color: #8892b0;">No lessons found for this family</div>'; return; }
+            
+            const totalLessonsEl = document.getElementById('groupTotalLessons');
+            const totalAmountEl = document.getElementById('groupTotalAmount');
+            const paymentBadgeEl = document.getElementById('groupPaymentBadge');
+            const paymentInfoEl = document.getElementById('groupPaymentInfo');
+            const statusSelect = document.getElementById('groupPaymentStatus');
+            
+            if (totalLessonsEl) totalLessonsEl.innerHTML = groupLessons.length;
+            if (totalAmountEl) totalAmountEl.innerHTML = `$${totalAmount.toFixed(2)}`;
+            if (paymentBadgeEl) paymentBadgeEl.innerHTML = `<span class="payment-status-badge ${statusClass}">${statusText}</span>`;
+            if (paymentInfoEl) paymentInfoEl.style.display = 'flex';
+            if (statusSelect) statusSelect.value = group?.paymentStatus || 'unpaid';
+            
+            const paymentList = document.getElementById('groupPaymentList');
+            if (!paymentList) return;
+            if (groupLessons.length === 0) { paymentList.innerHTML = '<div style="text-align: center; padding: 40px; color: #8892b0;">No lessons found for this family</div>'; return; }
             const sorted = [...groupLessons].sort((a, b) => new Date(b.start) - new Date(a.start));
-            document.getElementById('groupPaymentList').innerHTML = sorted.map(lesson => {
+            paymentList.innerHTML = sorted.map(lesson => {
                 const student = students.find(s => s.id === lesson.studentId);
                 const rate = student?.rateType === 'hourly' ? `$${student.rateAmount}/hr` : `$${student.rateAmount}/session`;
                 return `<div class="lesson-item"><div class="lesson-info"><div class="student-name">${escapeHtml(lesson.studentName)}</div><div class="lesson-details"><span class="badge">📅 ${formatDate(lesson.start)}</span><span class="badge">⏰ ${formatTime(lesson.start)} - ${formatTime(lesson.end)}</span><span class="badge">💰 $${lesson.earnings.toFixed(2)} (${rate})</span></div>${lesson.topic ? `<div class="lesson-details">📖 ${escapeHtml(lesson.topic)}</div>` : ''}</div></div>`;
@@ -1145,9 +1165,13 @@
                 analysisHTML += `<tr><td>${escapeHtml(studentName)}</td><td>${escapeHtml(data.group)}</td><td>${data.hours.toFixed(1)}</td><td>${data.lessons}</td><td>$${data.earnings.toFixed(2)}</td></tr>`;
             }
             analysisHTML += `</tbody></table><div class="analysis-total"><p><strong>GRAND TOTAL: $${overallTotal.toFixed(2)}</strong></p></div><div style="margin-top:20px;font-size:0.7rem;text-align:center;color:#666;">Generated on ${new Date().toLocaleDateString()}</div></div>`;
-            document.getElementById('analysisPreview').innerHTML = analysisHTML;
-            document.getElementById('analysisPreview').style.display = 'block';
-            document.getElementById('shareAnalysisBtn').style.display = 'block';
+            const preview = document.getElementById('analysisPreview');
+            if (preview) {
+                preview.innerHTML = analysisHTML;
+                preview.style.display = 'block';
+            }
+            const shareBtn = document.getElementById('shareAnalysisBtn');
+            if (shareBtn) shareBtn.style.display = 'block';
             currentAnalysisElement = document.getElementById('analysisContainer');
             showMessage('✅ Report generated! Click "Share Report" to send.', 'success', 'analysisFormMessage');
         }
@@ -1186,9 +1210,13 @@
                 invoiceHTML += `<tr><td>${formatDateForDisplay(lesson.start.split('T')[0])}</td><td>${escapeHtml(lesson.studentName)}</td><td>${formatTime(lesson.start)} - ${formatTime(lesson.end)}</td><td>${lesson.hours.toFixed(1)}</td><td>$${lesson.earnings.toFixed(2)}</td></tr>`;
             }
             invoiceHTML += `</tbody></table><div class="invoice-total"><p><strong>Total Hours:</strong> ${totalHours.toFixed(1)} hrs</p><p><strong>Balance Due:</strong> $${totalEarnings.toFixed(2)}</p></div><div style="margin-top:20px;font-size:0.7rem;text-align:center;color:#666;">Thank you!</div></div>`;
-            document.getElementById('invoicePreview').innerHTML = invoiceHTML;
-            document.getElementById('invoicePreview').style.display = 'block';
-            document.getElementById('shareBtn').style.display = 'block';
+            const preview = document.getElementById('invoicePreview');
+            if (preview) {
+                preview.innerHTML = invoiceHTML;
+                preview.style.display = 'block';
+            }
+            const shareBtn = document.getElementById('shareBtn');
+            if (shareBtn) shareBtn.style.display = 'block';
             currentInvoiceElement = document.getElementById('invoiceContainer');
             showMessage('✅ Invoice generated! Click "Share Invoice" to send.', 'success', 'invoiceFormMessage');
         }
@@ -1304,7 +1332,7 @@
             if (div) { div.textContent = msg; div.style.display = 'block'; div.style.background = type === 'success' ? 'rgba(0,208,156,0.2)' : 'rgba(255,77,109,0.2)'; div.style.color = type === 'success' ? '#00d09c' : '#ff4d6d'; setTimeout(() => div.style.display = 'none', 5000); }
         }
         function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m)); }
-        function updateTimestamp() { document.getElementById('timestamp').innerHTML = new Date().toLocaleTimeString(); }
+        function updateTimestamp() { const ts = document.getElementById('timestamp'); if (ts) ts.innerHTML = new Date().toLocaleTimeString(); }
         function toggleTheme() { document.body.classList.toggle('light'); }
         
         function setupAutoEndTime() {
@@ -1316,20 +1344,42 @@
         function switchMode(mode) {
             currentView = mode;
             document.querySelectorAll('.mode-btn').forEach(btn => { btn.classList.remove('active'); if (btn.dataset.mode === mode) btn.classList.add('active'); });
-            document.getElementById('groupsView').style.display = mode === 'groups' ? 'block' : 'none';
-            document.getElementById('studentsView').style.display = mode === 'students' ? 'block' : 'none';
-            document.getElementById('lessonsView').style.display = mode === 'lessons' ? 'block' : 'none';
-            document.getElementById('paymentView').style.display = mode === 'payment' ? 'block' : 'none';
-            document.getElementById('analysisView').style.display = mode === 'analysis' ? 'block' : 'none';
-            document.getElementById('invoiceView').style.display = mode === 'invoice' ? 'block' : 'none';
-            document.getElementById('calendarView').style.display = mode === 'calendar' ? 'block' : 'none';
-            document.getElementById('backupView').style.display = mode === 'backup' ? 'block' : 'none';
+            const groupsView = document.getElementById('groupsView');
+            const studentsView = document.getElementById('studentsView');
+            const lessonsView = document.getElementById('lessonsView');
+            const paymentView = document.getElementById('paymentView');
+            const analysisView = document.getElementById('analysisView');
+            const invoiceView = document.getElementById('invoiceView');
+            const calendarView = document.getElementById('calendarView');
+            const backupView = document.getElementById('backupView');
+            
+            if (groupsView) groupsView.style.display = mode === 'groups' ? 'block' : 'none';
+            if (studentsView) studentsView.style.display = mode === 'students' ? 'block' : 'none';
+            if (lessonsView) lessonsView.style.display = mode === 'lessons' ? 'block' : 'none';
+            if (paymentView) paymentView.style.display = mode === 'payment' ? 'block' : 'none';
+            if (analysisView) analysisView.style.display = mode === 'analysis' ? 'block' : 'none';
+            if (invoiceView) invoiceView.style.display = mode === 'invoice' ? 'block' : 'none';
+            if (calendarView) calendarView.style.display = mode === 'calendar' ? 'block' : 'none';
+            if (backupView) backupView.style.display = mode === 'backup' ? 'block' : 'none';
+            
             if (mode === 'groups') renderGroups();
             if (mode === 'students') renderStudents();
             if (mode === 'lessons') { renderLessons(); updateLessonStats(); }
             if (mode === 'payment') renderGroupPayment();
-            if (mode === 'analysis') { document.getElementById('analysisPreview').style.display = 'none'; document.getElementById('shareAnalysisBtn').style.display = 'none'; currentAnalysisElement = null; }
-            if (mode === 'invoice') { document.getElementById('invoicePreview').style.display = 'none'; document.getElementById('shareBtn').style.display = 'none'; currentInvoiceElement = null; }
+            if (mode === 'analysis') { 
+                const preview = document.getElementById('analysisPreview');
+                const shareBtn = document.getElementById('shareAnalysisBtn');
+                if (preview) preview.style.display = 'none';
+                if (shareBtn) shareBtn.style.display = 'none';
+                currentAnalysisElement = null;
+            }
+            if (mode === 'invoice') { 
+                const preview = document.getElementById('invoicePreview');
+                const shareBtn = document.getElementById('shareBtn');
+                if (preview) preview.style.display = 'none';
+                if (shareBtn) shareBtn.style.display = 'none';
+                currentInvoiceElement = null;
+            }
             if (mode === 'calendar') updateCalendarStats();
             if (mode === 'backup') updateBackupStats();
         }
@@ -1338,11 +1388,14 @@
             document.getElementById('editGroupId').value = '';
             document.getElementById('editGroupName').value = '';
             document.getElementById('editGroupPaymentStatus').value = 'unpaid';
-            document.getElementById('groupModalTitle').innerText = 'Add New Family';
+            const title = document.getElementById('groupModalTitle');
+            if (title) title.innerText = 'Add New Family';
             document.getElementById('groupModal').style.display = 'flex';
             const saveBtn = document.querySelector('#groupModal .btn-primary');
-            saveBtn.innerText = '➕ Add Family';
-            saveBtn.setAttribute('onclick', 'saveNewGroup()');
+            if (saveBtn) {
+                saveBtn.innerText = '➕ Add Family';
+                saveBtn.setAttribute('onclick', 'saveNewGroup()');
+            }
         }
         function saveNewGroup() {
             const name = document.getElementById('editGroupName').value.trim();
@@ -1358,12 +1411,16 @@
             document.getElementById('editRateType').value = 'hourly';
             document.getElementById('editRateAmount').value = '';
             const grpSel = document.getElementById('editStudentGroup');
-            grpSel.innerHTML = '<option value="">-- Select Family --</option>';
-            groups.forEach(g => { grpSel.innerHTML += `<option value="${g.id}">${g.name}</option>`; });
+            if (grpSel) {
+                grpSel.innerHTML = '<option value="">-- Select Family --</option>';
+                groups.forEach(g => { grpSel.innerHTML += `<option value="${g.id}">${g.name}</option>`; });
+            }
             document.getElementById('studentModal').style.display = 'flex';
             const saveBtn = document.querySelector('#studentModal .btn-primary');
-            saveBtn.innerText = '➕ Add Student';
-            saveBtn.setAttribute('onclick', 'saveNewStudent()');
+            if (saveBtn) {
+                saveBtn.innerText = '➕ Add Student';
+                saveBtn.setAttribute('onclick', 'saveNewStudent()');
+            }
         }
         function saveNewStudent() {
             const name = document.getElementById('editStudentName').value.trim();
