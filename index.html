@@ -748,7 +748,7 @@
                     <li>📂 <strong>Import from File</strong> - Restore data from a backup file</li>
                     <li>💰 <strong>Family Payment Status</strong> - Set status: Unpaid / Paid / Invoiced</li>
                     <li>📊 <strong>Analysis Report</strong> - Includes payment history by family</li>
-                    <li>🧾 <strong>Invoices</strong> - Generate shareable invoices</li>
+                    <li>🧾 <strong>Invoices</strong> - Generate shareable invoices (family name not shown on invoice)</li>
                     <li>📅 <strong>Add to Calendar</strong> - Export lessons to Apple Calendar</li>
                 </ul>
             </div>
@@ -803,7 +803,6 @@
         let currentInvoiceElement = null;
         let currentAnalysisElement = null;
 
-        // Load data - NO DEFAULT DATA (completely blank on first install)
         function loadData() {
             const savedGroups = localStorage.getItem('tuition_groups');
             if (savedGroups && savedGroups !== 'undefined') {
@@ -1193,19 +1192,19 @@
 
         function downloadAnalysisImage(canvas) { const link = document.createElement('a'); link.download = 'fee_analysis.png'; link.href = canvas.toDataURL(); link.click(); showMessage('📸 Report image downloaded!', 'success', 'analysisFormMessage'); }
 
-        // INVOICE functions
+        // INVOICE functions - FAMILY LINE REMOVED
         async function generateInvoice() {
             const groupId = document.getElementById('invoiceGroup').value;
             const fromDate = document.getElementById('invoiceFromDate').value;
             const toDate = document.getElementById('invoiceToDate').value;
             if (!groupId || !fromDate || !toDate) { showMessage('Please select a family and date range', 'error', 'invoiceFormMessage'); return; }
-            const group = groups.find(g => g.id === groupId);
             let filteredLessons = lessons.filter(l => { const lessonDate = new Date(l.start.split('T')[0]); return l.groupId === groupId && lessonDate >= new Date(fromDate) && lessonDate <= new Date(toDate); });
             if (filteredLessons.length === 0) { showMessage('No lessons found for this family in the selected date range', 'error', 'invoiceFormMessage'); return; }
             filteredLessons.sort((a, b) => new Date(a.start) - new Date(b.start));
             const totalEarnings = filteredLessons.reduce((sum, l) => sum + l.earnings, 0);
             const totalHours = filteredLessons.reduce((sum, l) => sum + l.hours, 0);
-            let invoiceHTML = `<div id="invoiceContainer" class="invoice-container"><div class="invoice-header"><div class="invoice-title">TUITION INVOICE</div><div class="invoice-subtitle">Mr Lee Math Tuition</div><div class="invoice-dates">Family: ${group.name}</div><div class="invoice-dates">Period: ${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}</div></div><table class="invoice-table"><thead><tr><th>Day</th><th>Student</th><th>Time</th><th>Hours</th><th>Amount</th></tr></thead><tbody>`;
+            // REMOVED: The line that showed family name
+            let invoiceHTML = `<div id="invoiceContainer" class="invoice-container"><div class="invoice-header"><div class="invoice-title">TUITION INVOICE</div><div class="invoice-subtitle">Mr Lee Math Tuition</div><div class="invoice-dates">Period: ${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}</div></div><table class="invoice-table"><thead><tr><th>Day</th><th>Student</th><th>Time</th><th>Hours</th><th>Amount</th></tr></thead><tbody>`;
             for (const lesson of filteredLessons) {
                 invoiceHTML += `<tr><td>${formatDateForDisplay(lesson.start.split('T')[0])}</td><td>${escapeHtml(lesson.studentName)}</td><td>${formatTime(lesson.start)} - ${formatTime(lesson.end)}</td><td>${lesson.hours.toFixed(1)}</td><td>$${lesson.earnings.toFixed(2)}</td></tr>`;
             }
