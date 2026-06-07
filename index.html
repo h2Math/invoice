@@ -462,6 +462,8 @@
             }
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <div class="dashboard">
@@ -748,7 +750,7 @@
                     <li>📂 <strong>Import from File</strong> - Restore data from a backup file</li>
                     <li>💰 <strong>Family Payment Status</strong> - Set status: Unpaid / Paid / Invoiced</li>
                     <li>📊 <strong>Analysis Report</strong> - Includes payment history by family</li>
-                    <li>🧾 <strong>Invoices</strong> - Generate shareable invoices (family name hidden)</li>
+                    <li>🧾 <strong>Invoices</strong> - Generate shareable PDF invoices (family name hidden)</li>
                     <li>📅 <strong>Add to Calendar</strong> - Export lessons to Apple Calendar</li>
                 </ul>
             </div>
@@ -794,7 +796,6 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         let groups = [];
         let students = [];
@@ -1157,7 +1158,7 @@
                 const status = groupPaymentStatus[groupName];
                 const statusClass = status === 'paid' ? 'status-paid' : (status === 'invoiced' ? 'status-invoiced' : 'status-unpaid');
                 const statusText = status === 'paid' ? '✅ Paid' : (status === 'invoiced' ? '📄 Invoiced' : '⚠️ Unpaid');
-                analysisHTML += `<td><td style="padding: 8px;">${escapeHtml(groupName)}</td><td style="padding: 8px;">$${total.toFixed(2)}</td><td style="padding: 8px;">${percentage}%</td><td style="padding: 8px;"><span class="payment-status-badge ${statusClass}">${statusText}</span></td></tr>`;
+                analysisHTML += `<tr><td style="padding: 8px;">${escapeHtml(groupName)}</td><td style="padding: 8px;">$${total.toFixed(2)}</td><td style="padding: 8px;">${percentage}%</td><td style="padding: 8px;"><span class="payment-status-badge ${statusClass}">${statusText}</span></td></tr>`;
             }
             analysisHTML += `</tbody></table><h3 style="margin:20px 0 10px 0;">By Student</h3><table class="analysis-table"><thead><tr><th>Student</th><th>Family</th><th>Hours</th><th>Lessons</th><th>Total Fees</th></tr></thead><tbody>`;
             for (const [studentName, data] of Object.entries(studentTotals).sort((a, b) => b[1].earnings - a[1].earnings)) {
@@ -1183,7 +1184,7 @@
                 canvas.toBlob(async (blob) => {
                     const file = new File([blob], 'analysis.png', { type: 'image/png' });
                     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-                        try { await navigator.share({ title: 'Fee Analysis Report', text: 'Here is the fee analysis report', files: [file] }); showMessage('✅ Report shared!', 'success', 'analysisFormMessage'); } 
+                        try { await navigator.share({ title: 'Fee Analysis Report', files: [file] }); showMessage('✅ Report shared!', 'success', 'analysisFormMessage'); } 
                         catch(e) { downloadAnalysisImage(canvas); }
                     } else { downloadAnalysisImage(canvas); }
                 }, 'image/png');
@@ -1192,7 +1193,7 @@
 
         function downloadAnalysisImage(canvas) { const link = document.createElement('a'); link.download = 'fee_analysis.png'; link.href = canvas.toDataURL(); link.click(); showMessage('📸 Report image downloaded!', 'success', 'analysisFormMessage'); }
 
-        // INVOICE functions - NO FAMILY NAME DISPLAYED
+        // INVOICE functions - PDF sharing, no family name, no extra message
         async function generateInvoice() {
             const groupId = document.getElementById('invoiceGroup').value;
             const fromDate = document.getElementById('invoiceFromDate').value;
@@ -1203,7 +1204,6 @@
             filteredLessons.sort((a, b) => new Date(a.start) - new Date(b.start));
             const totalEarnings = filteredLessons.reduce((sum, l) => sum + l.earnings, 0);
             const totalHours = filteredLessons.reduce((sum, l) => sum + l.hours, 0);
-            // INVOICE DOES NOT SHOW FAMILY NAME - only period and lesson details
             let invoiceHTML = `<div id="invoiceContainer" class="invoice-container"><div class="invoice-header"><div class="invoice-title">TUITION INVOICE</div><div class="invoice-subtitle">Mr Lee Math Tuition</div><div class="invoice-dates">Period: ${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}</div></div><table class="invoice-table"><thead><tr><th>Date</th><th>Student</th><th>Time</th><th>Duration</th><th>Amount</th></tr></thead><tbody>`;
             for (const lesson of filteredLessons) {
                 invoiceHTML += `<tr><td style="padding: 8px;">${formatDateForDisplay(lesson.start.split('T')[0])}</td><td style="padding: 8px;">${escapeHtml(lesson.studentName)}</td><td style="padding: 8px;">${formatTime(lesson.start)} - ${formatTime(lesson.end)}</td><td style="padding: 8px;">${lesson.hours.toFixed(1)} hr${lesson.hours !== 1 ? 's' : ''}</td><td style="padding: 8px;">$${lesson.earnings.toFixed(2)}</td></tr>`;
@@ -1222,20 +1222,64 @@
 
         async function shareInvoice() {
             if (!currentInvoiceElement) { showMessage('Please generate an invoice first', 'error', 'invoiceFormMessage'); return; }
-            showMessage('📸 Capturing invoice...', 'success', 'invoiceFormMessage');
+            showMessage('📄 Generating PDF...', 'success', 'invoiceFormMessage');
+            
             try {
-                const canvas = await html2canvas(currentInvoiceElement, { scale: 2, backgroundColor: '#ffffff', logging: false });
-                canvas.toBlob(async (blob) => {
-                    const file = new File([blob], 'invoice.png', { type: 'image/png' });
-                    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-                        try { await navigator.share({ title: 'Tuition Invoice', text: 'Here is the tuition invoice', files: [file] }); showMessage('✅ Invoice shared!', 'success', 'invoiceFormMessage'); } 
-                        catch(e) { downloadInvoiceImage(canvas); }
-                    } else { downloadInvoiceImage(canvas); }
-                }, 'image/png');
-            } catch(e) { showMessage('Error capturing invoice', 'error', 'invoiceFormMessage'); }
+                const invoiceElement = currentInvoiceElement.cloneNode(true);
+                invoiceElement.style.width = '800px';
+                invoiceElement.style.margin = '0';
+                invoiceElement.style.padding = '30px';
+                invoiceElement.style.backgroundColor = 'white';
+                invoiceElement.style.borderRadius = '20px';
+                
+                invoiceElement.style.position = 'absolute';
+                invoiceElement.style.left = '-9999px';
+                invoiceElement.style.top = '-9999px';
+                document.body.appendChild(invoiceElement);
+                
+                const canvas = await html2canvas(invoiceElement, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    useCORS: true
+                });
+                
+                document.body.removeChild(invoiceElement);
+                
+                const { jsPDF } = window.jspdf;
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 210;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let pdf = new jsPDF('p', 'mm', 'a4');
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                
+                const pdfBlob = pdf.output('blob');
+                const pdfFile = new File([pdfBlob], 'invoice.pdf', { type: 'application/pdf' });
+                
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                    try {
+                        await navigator.share({
+                            title: 'Tuition Invoice',
+                            files: [pdfFile]
+                        });
+                        showMessage('✅ Invoice shared as PDF!', 'success', 'invoiceFormMessage');
+                    } catch (shareError) {
+                        downloadInvoicePDF(pdf);
+                    }
+                } else {
+                    downloadInvoicePDF(pdf);
+                }
+                
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                showMessage('Error generating PDF. Please try again.', 'error', 'invoiceFormMessage');
+            }
         }
 
-        function downloadInvoiceImage(canvas) { const link = document.createElement('a'); link.download = 'invoice.png'; link.href = canvas.toDataURL(); link.click(); showMessage('📸 Invoice image downloaded!', 'success', 'invoiceFormMessage'); }
+        function downloadInvoicePDF(pdf) {
+            pdf.save('invoice.pdf');
+            showMessage('📄 PDF invoice downloaded!', 'success', 'invoiceFormMessage');
+        }
 
         // CALENDAR functions
         function formatICSDate(date) { return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; }
