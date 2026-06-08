@@ -169,10 +169,7 @@
                         <div class="stat"><div class="stat-number" id="totalLessons">0</div><div class="stat-label">Total Lessons</div></div>
                         <div class="stat"><div class="stat-number" id="totalEarnings">$0</div><div class="stat-label">Total Earnings</div></div>
                     </div>
-                    <div class="button-group" style="margin-bottom:15px">
-                        <button onclick="exportToCalendarAdd()" class="btn-calendar" style="flex:1">➕ Add to Calendar</button>
-                        <button onclick="exportToCalendarReplace()" class="btn-backup" style="flex:1">🔄 Replace Calendar Events</button>
-                    </div>
+                    <button onclick="syncToCalendar()" class="btn-calendar" style="width:100%; margin-bottom:15px;">📅 Sync to iPhone Calendar</button>
                     <div id="calendarViewContainer"></div>
                 </div>
             </div>
@@ -186,7 +183,7 @@
         
         <div id="backupView" style="display:none"><div class="card"><div class="card-title">💾 Backup & Restore Data</div><div id="backupFormMessage" class="success-msg"></div><div class="backup-info"><strong>📊 Current Data Summary:</strong><br>Parents: <span id="backupGroupCount">0</span><br>Students: <span id="backupStudentCount">0</span><br>Lessons: <span id="backupLessonCount">0</span></div><div class="success-box" style="margin-bottom:20px"><strong>💾 How to Backup:</strong><ul style="margin-top:10px;margin-left:20px"><li>Click <strong>"Export to File"</strong> to save your data as a JSON file</li><li>Save the file to your computer, iCloud Drive, Google Drive, or email it to yourself</li></ul></div><div class="success-box" style="margin-bottom:20px"><strong>🔄 How to Restore:</strong><ul style="margin-top:10px;margin-left:20px"><li>Click <strong>"Import from File"</strong> to select a previously saved backup file</li><li><strong>⚠️ Warning:</strong> This will replace ALL current data</li></ul></div><div class="button-group"><button onclick="exportToFile()" class="btn-backup" style="flex:1">📁 Export to File</button><button onclick="importFromFile()" class="btn-primary" style="flex:1">📂 Import from File</button></div></div></div>
 
-        <div class="instructions"><h3>📖 How It Works</h3><div class="success-box"><strong>✅ Features:</strong><ul style="margin-top:10px;margin-left:20px"><li>💾 <strong>Export to File</strong> - Save your data as a JSON backup file</li><li>📂 <strong>Import from File</strong> - Restore data from a backup file</li><li>💰 <strong>Parent Payment Status</strong> - Set status: Unpaid / Paid / Invoiced</li><li>📊 <strong>Analysis Report</strong> - Includes payment history by parent</li><li>🧾 <strong>Invoices</strong> - Share with custom text message & simple filename</li><li>📅 <strong>Calendar View</strong> - Click any lesson to edit or delete</li><li>📱 <strong>Export to iPhone Calendar</strong> - Two options: Add or Replace</li></ul></div></div>
+        <div class="instructions"><h3>📖 How It Works</h3><div class="success-box"><strong>✅ Features:</strong><ul style="margin-top:10px;margin-left:20px"><li>💾 <strong>Export to File</strong> - Save your data as a JSON backup file</li><li>📂 <strong>Import from File</strong> - Restore data from a backup file</li><li>💰 <strong>Parent Payment Status</strong> - Set status: Unpaid / Paid / Invoiced</li><li>📊 <strong>Analysis Report</strong> - Includes payment history by parent</li><li>🧾 <strong>Invoices</strong> - Share with custom text message & simple filename</li><li>📅 <strong>Calendar View</strong> - Click any lesson to edit or delete</li><li>📱 <strong>Sync to iPhone Calendar</strong> - One-click sync (replaces old events)</li></ul></div></div>
         <div class="status-text">Last updated: <span id="timestamp">--</span></div>
     </div>
 
@@ -504,57 +501,16 @@
             });
         }
         
-        function generateICSContent() {
-            let icsContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Mr Lee Math Tuition//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:Tuition Schedule\n'; 
-            
-            for(const l of lessons){ 
-                const startDate = parseLocalDateTime(l.start);
-                const endDate = parseLocalDateTime(l.end);
-                
-                const formatICS = (date) => {
-                    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-                };
-                
-                const summary = l.studentName || 'Tuition Lesson';
-                const description = l.notes || '';
-                
-                icsContent += `BEGIN:VEVENT\n`;
-                icsContent += `UID:${l.id}@mrleemath.com\n`;
-                icsContent += `DTSTAMP:${formatICS(new Date())}\n`;
-                icsContent += `DTSTART:${formatICS(startDate)}\n`;
-                icsContent += `DTEND:${formatICS(endDate)}\n`;
-                icsContent += `SUMMARY:${escapeICS(summary)}\n`;
-                icsContent += `DESCRIPTION:${escapeICS(description)}\n`;
-                icsContent += `END:VEVENT\n`;
-            } 
-            
-            icsContent += 'END:VCALENDAR';
-            return icsContent;
-        }
-        
-        // Button 1: Add to Calendar (only adds, doesn't delete old)
-        function exportToCalendarAdd() { 
+        // SINGLE BUTTON: Sync to Calendar (Replaces old events with current ones)
+        function syncToCalendar() { 
             if(lessons.length === 0){ 
-                showMessage('No lessons to export','error','calendarFormMessage'); 
+                showMessage('No lessons to sync','error','calendarFormMessage'); 
                 return; 
             }
             
-            const icsContent = generateICSContent();
-            const encodedData = encodeURIComponent(icsContent);
-            const url = 'data:text/calendar;charset=utf8,' + encodedData;
-            window.location.href = url;
-            showMessage(`➕ Adding ${lessons.length} lessons to Calendar...`, 'success', 'calendarFormMessage');
-        }
-        
-        // Button 2: Replace Calendar Events (deletes old, adds new)
-        function exportToCalendarReplace() { 
-            if(lessons.length === 0){ 
-                showMessage('No lessons to export','error','calendarFormMessage'); 
-                return; 
-            }
-            
-            if(confirm('⚠️ This will REPLACE all existing tuition events in your Calendar.\n\n- Old tuition events will be deleted\n- Current lessons will be added\n\nContinue?')) {
-                // Create a cancellation calendar first
+            if(confirm('This will sync your current lessons to iPhone Calendar.\n\n- Old tuition events will be removed\n- Current lessons will be added\n\nContinue?')) {
+                
+                // Step 1: Create cancellation file to remove old events
                 let cancelContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Mr Lee Math Tuition//EN\nMETHOD:CANCEL\n';
                 
                 for(const l of lessons){ 
@@ -581,12 +537,36 @@
                 const cancelUrl = 'data:text/calendar;charset=utf8,' + cancelData;
                 window.open(cancelUrl, '_blank');
                 
+                // Step 2: Send the new calendar file after a short delay
                 setTimeout(() => {
-                    const icsContent = generateICSContent();
+                    let icsContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Mr Lee Math Tuition//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:Tuition Schedule\n'; 
+                    
+                    for(const l of lessons){ 
+                        const startDate = parseLocalDateTime(l.start);
+                        const endDate = parseLocalDateTime(l.end);
+                        
+                        const formatICS = (date) => {
+                            return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                        };
+                        
+                        const summary = l.studentName || 'Tuition Lesson';
+                        const description = l.notes || '';
+                        
+                        icsContent += `BEGIN:VEVENT\n`;
+                        icsContent += `UID:${l.id}@mrleemath.com\n`;
+                        icsContent += `DTSTAMP:${formatICS(new Date())}\n`;
+                        icsContent += `DTSTART:${formatICS(startDate)}\n`;
+                        icsContent += `DTEND:${formatICS(endDate)}\n`;
+                        icsContent += `SUMMARY:${escapeICS(summary)}\n`;
+                        icsContent += `DESCRIPTION:${escapeICS(description)}\n`;
+                        icsContent += `END:VEVENT\n`;
+                    } 
+                    
+                    icsContent += 'END:VCALENDAR';
                     const encodedData = encodeURIComponent(icsContent);
                     const url = 'data:text/calendar;charset=utf8,' + encodedData;
                     window.location.href = url;
-                    showMessage(`✅ Calendar replaced with ${lessons.length} lessons!`, 'success', 'calendarFormMessage');
+                    showMessage(`✅ Synced ${lessons.length} lessons to Calendar!`, 'success', 'calendarFormMessage');
                 }, 800);
             }
         }
