@@ -183,7 +183,7 @@
         
         <div id="backupView" style="display:none"><div class="card"><div class="card-title">💾 Backup & Restore Data</div><div id="backupFormMessage" class="success-msg"></div><div class="backup-info"><strong>📊 Current Data Summary:</strong><br>Parents: <span id="backupGroupCount">0</span><br>Students: <span id="backupStudentCount">0</span><br>Lessons: <span id="backupLessonCount">0</span></div><div class="success-box" style="margin-bottom:20px"><strong>💾 How to Backup:</strong><ul style="margin-top:10px;margin-left:20px"><li>Click <strong>"Export to File"</strong> to save your data as a JSON file</li><li>Save the file to your computer, iCloud Drive, Google Drive, or email it to yourself</li></ul></div><div class="success-box" style="margin-bottom:20px"><strong>🔄 How to Restore:</strong><ul style="margin-top:10px;margin-left:20px"><li>Click <strong>"Import from File"</strong> to select a previously saved backup file</li><li><strong>⚠️ Warning:</strong> This will replace ALL current data</li></ul></div><div class="button-group"><button onclick="exportToFile()" class="btn-backup" style="flex:1">📁 Export to File</button><button onclick="importFromFile()" class="btn-primary" style="flex:1">📂 Import from File</button></div></div></div>
 
-        <div class="instructions"><h3>📖 How It Works</h3><div class="success-box"><strong>✅ Features:</strong><ul style="margin-top:10px;margin-left:20px"><li>💾 <strong>Export to File</strong> - Save your data as a JSON backup file</li><li>📂 <strong>Import from File</strong> - Restore data from a backup file</li><li>💰 <strong>Parent Payment Status</strong> - Set status: Unpaid / Paid / Invoiced</li><li>📊 <strong>Analysis Report</strong> - Includes payment history by parent</li><li>🧾 <strong>Invoices</strong> - Share with custom text message & simple filename</li><li>📅 <strong>Calendar View</strong> - Click any lesson to edit, copy, or delete</li><li>📋 <strong>Copy & Paste Lesson</strong> - Copy a lesson and paste it to any other date</li><li>📱 <strong>Sync to iPhone Calendar</strong> - One-click sync (replaces old events)</li></ul></div></div>
+        <div class="instructions"><h3>📖 How It Works</h3><div class="success-box"><strong>✅ Features:</strong><ul style="margin-top:10px;margin-left:20px"><li>💾 <strong>Export to File</strong> - Save your data as a JSON backup file</li><li>📂 <strong>Import from File</strong> - Restore data from a backup file</li><li>💰 <strong>Parent Payment Status</strong> - Set status: Unpaid / Paid / Invoiced</li><li>📊 <strong>Analysis Report</strong> - Includes payment history by parent</li><li>🧾 <strong>Invoices</strong> - Share with custom text message & simple filename</li><li>📅 <strong>Calendar View</strong> - Click any lesson to edit, copy, or delete</li><li>📋 <strong>Copy & Paste Lesson</strong> - Copy a lesson (preserves time) and paste to any date</li><li>📱 <strong>Sync to iPhone Calendar</strong> - One-click sync (replaces old events)</li></ul></div></div>
         <div class="status-text">Last updated: <span id="timestamp">--</span></div>
     </div>
 
@@ -284,22 +284,28 @@
             document.getElementById('lessonStart').dispatchEvent(new Event('change')); 
         }
         
-        // Copy lesson to clipboard
+        // Copy lesson to clipboard - preserve original time
         function copyLessonToClipboard(lessonId) {
             const lesson = lessons.find(l => l.id === lessonId);
             if (!lesson) return;
+            
+            const originalStart = parseLocalDateTime(lesson.start);
+            const originalEnd = parseLocalDateTime(lesson.end);
             
             copiedLesson = {
                 studentId: lesson.studentId,
                 studentName: lesson.studentName,
                 groupId: lesson.groupId,
-                duration: (parseLocalDateTime(lesson.end) - parseLocalDateTime(lesson.start)) / 3600000,
+                duration: (originalEnd - originalStart) / 3600000,
+                startTime: { hours: originalStart.getHours(), minutes: originalStart.getMinutes() },
+                endTime: { hours: originalEnd.getHours(), minutes: originalEnd.getMinutes() },
                 topic: lesson.topic,
                 notes: lesson.notes
             };
             
             closeEditLessonModal();
-            showMessage(`📋 Copied "${lesson.studentName}" lesson. Click on any date in calendar to paste.`, 'success', 'lessonFormMessage');
+            const timeStr = `${String(originalStart.getHours()).padStart(2,'0')}:${String(originalStart.getMinutes()).padStart(2,'0')}`;
+            showMessage(`📋 Copied "${lesson.studentName}" lesson (${timeStr}). Click on any date in calendar to paste.`, 'success', 'lessonFormMessage');
             
             // Highlight calendar days
             document.querySelectorAll('.calendar-day:not(.empty)').forEach(day => {
@@ -323,7 +329,7 @@
                     calendarContainer.insertBefore(banner, calendarContainer.firstChild);
                 }
             }
-            banner.innerHTML = '📋 Paste mode active - Click any date to paste the copied lesson. <span style="text-decoration:underline;">Click here to cancel.</span>';
+            banner.innerHTML = '📋 Paste mode active - Click any date to paste the copied lesson (same time). <span style="text-decoration:underline;">Click here to cancel.</span>';
             banner.style.display = 'block';
         }
         
@@ -340,7 +346,7 @@
             showMessage('Paste mode cancelled.', 'success', 'lessonFormMessage');
         }
         
-        // Paste lesson to selected date
+        // Paste lesson to selected date - PRESERVING original time
         function pasteLessonToDate(event) {
             if (!copiedLesson) return;
             
@@ -351,12 +357,19 @@
             const year = currentCalendarYear;
             const month = currentCalendarMonth;
             
-            // Default time: 4:00 PM
-            let startHour = 16;
-            let startMinute = 0;
+            // Use the original lesson's time
+            let startHour = copiedLesson.startTime.hours;
+            let startMinute = copiedLesson.startTime.minutes;
+            let endHour = copiedLesson.endTime.hours;
+            let endMinute = copiedLesson.endTime.minutes;
             
             const newStart = new Date(year, month, parseInt(day), startHour, startMinute);
-            const newEnd = new Date(newStart.getTime() + (copiedLesson.duration * 3600000));
+            const newEnd = new Date(year, month, parseInt(day), endHour, endMinute);
+            
+            // Handle if end time goes to next day (e.g., lesson starting at 10pm ending at 12am)
+            if (newEnd < newStart) {
+                newEnd.setDate(newEnd.getDate() + 1);
+            }
             
             const startStr = `${newStart.getFullYear()}-${String(newStart.getMonth() + 1).padStart(2, '0')}-${String(newStart.getDate()).padStart(2, '0')}T${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
             const endStr = `${newEnd.getFullYear()}-${String(newEnd.getMonth() + 1).padStart(2, '0')}-${String(newEnd.getDate()).padStart(2, '0')}T${String(newEnd.getHours()).padStart(2, '0')}:${String(newEnd.getMinutes()).padStart(2, '0')}`;
@@ -390,7 +403,8 @@
             updateLessonStats();
             updateBackupStats();
             
-            showMessage(`✅ Pasted "${copiedLesson.studentName}" lesson to ${day}/${month+1}/${year} at ${startHour}:${String(startMinute).padStart(2,'0')}`, 'success', 'lessonFormMessage');
+            const timeStr = `${String(startHour).padStart(2,'0')}:${String(startMinute).padStart(2,'0')}`;
+            showMessage(`✅ Pasted "${copiedLesson.studentName}" lesson to ${day}/${month+1}/${year} at ${timeStr}`, 'success', 'lessonFormMessage');
             cancelPasteMode();
         }
         
