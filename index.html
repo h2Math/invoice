@@ -169,7 +169,7 @@
                         <div class="stat"><div class="stat-number" id="totalLessons">0</div><div class="stat-label">Total Lessons</div></div>
                         <div class="stat"><div class="stat-number" id="totalEarnings">$0</div><div class="stat-label">Total Earnings</div></div>
                     </div>
-                    <button onclick="exportAllToCalendar()" class="btn-calendar" style="width:100%; margin-bottom:15px;">📅 Export All to iPhone Calendar</button>
+                    <button onclick="syncToCalendar()" class="btn-calendar" style="width:100%; margin-bottom:15px;">📅 Sync to iPhone Calendar</button>
                     <div id="calendarViewContainer"></div>
                 </div>
             </div>
@@ -183,7 +183,7 @@
         
         <div id="backupView" style="display:none"><div class="card"><div class="card-title">💾 Backup & Restore Data</div><div id="backupFormMessage" class="success-msg"></div><div class="backup-info"><strong>📊 Current Data Summary:</strong><br>Parents: <span id="backupGroupCount">0</span><br>Students: <span id="backupStudentCount">0</span><br>Lessons: <span id="backupLessonCount">0</span></div><div class="success-box" style="margin-bottom:20px"><strong>💾 How to Backup:</strong><ul style="margin-top:10px;margin-left:20px"><li>Click <strong>"Export to File"</strong> to save your data as a JSON file</li><li>Save the file to your computer, iCloud Drive, Google Drive, or email it to yourself</li></ul></div><div class="success-box" style="margin-bottom:20px"><strong>🔄 How to Restore:</strong><ul style="margin-top:10px;margin-left:20px"><li>Click <strong>"Import from File"</strong> to select a previously saved backup file</li><li><strong>⚠️ Warning:</strong> This will replace ALL current data</li></ul></div><div class="button-group"><button onclick="exportToFile()" class="btn-backup" style="flex:1">📁 Export to File</button><button onclick="importFromFile()" class="btn-primary" style="flex:1">📂 Import from File</button></div></div></div>
 
-        <div class="instructions"><h3>📖 How It Works</h3><div class="success-box"><strong>✅ Features:</strong><ul style="margin-top:10px;margin-left:20px"><li>💾 <strong>Export to File</strong> - Save your data as a JSON backup file</li><li>📂 <strong>Import from File</strong> - Restore data from a backup file</li><li>💰 <strong>Parent Payment Status</strong> - Set status: Unpaid / Paid / Invoiced</li><li>📊 <strong>Analysis Report</strong> - Includes payment history by parent</li><li>🧾 <strong>Invoices</strong> - Share with custom text message & simple filename</li><li>📅 <strong>Calendar View</strong> - Click any lesson to edit or delete</li><li>📱 <strong>Export to iPhone Calendar</strong> - Sync lessons to Apple Calendar</li></ul></div></div>
+        <div class="instructions"><h3>📖 How It Works</h3><div class="success-box"><strong>✅ Features:</strong><ul style="margin-top:10px;margin-left:20px"><li>💾 <strong>Export to File</strong> - Save your data as a JSON backup file</li><li>📂 <strong>Import from File</strong> - Restore data from a backup file</li><li>💰 <strong>Parent Payment Status</strong> - Set status: Unpaid / Paid / Invoiced</li><li>📊 <strong>Analysis Report</strong> - Includes payment history by parent</li><li>🧾 <strong>Invoices</strong> - Share with custom text message & simple filename</li><li>📅 <strong>Calendar View</strong> - Click any lesson to edit, copy, or delete</li><li>📋 <strong>Copy & Paste Lesson</strong> - Copy a lesson and paste it to any other date</li><li>📱 <strong>Sync to iPhone Calendar</strong> - One-click sync (replaces old events)</li></ul></div></div>
         <div class="status-text">Last updated: <span id="timestamp">--</span></div>
     </div>
 
@@ -195,8 +195,8 @@
         let currentInvoiceElement = null, currentAnalysisElement = null;
         let currentCalendarYear = new Date().getFullYear();
         let currentCalendarMonth = new Date().getMonth();
+        let copiedLesson = null;
 
-        // Helper: Parse stored local datetime string "YYYY-MM-DD HH:MM:SS"
         function parseLocalDateTime(dateStr) {
             const [datePart, timePart] = dateStr.split(' ');
             const [year, month, day] = datePart.split('-');
@@ -284,7 +284,116 @@
             document.getElementById('lessonStart').dispatchEvent(new Event('change')); 
         }
         
-        // EDIT AND DELETE LESSON MODAL
+        // Copy lesson to clipboard
+        function copyLessonToClipboard(lessonId) {
+            const lesson = lessons.find(l => l.id === lessonId);
+            if (!lesson) return;
+            
+            copiedLesson = {
+                studentId: lesson.studentId,
+                studentName: lesson.studentName,
+                groupId: lesson.groupId,
+                duration: (parseLocalDateTime(lesson.end) - parseLocalDateTime(lesson.start)) / 3600000,
+                topic: lesson.topic,
+                notes: lesson.notes
+            };
+            
+            closeEditLessonModal();
+            showMessage(`📋 Copied "${lesson.studentName}" lesson. Click on any date in calendar to paste.`, 'success', 'lessonFormMessage');
+            
+            // Highlight calendar days
+            document.querySelectorAll('.calendar-day:not(.empty)').forEach(day => {
+                day.style.border = '2px solid #00d09c';
+                day.style.cursor = 'copy';
+                day.addEventListener('click', pasteLessonToDate, { once: true });
+            });
+            
+            // Add instruction banner
+            let banner = document.getElementById('pasteInstructionBanner');
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'pasteInstructionBanner';
+                banner.className = 'success-box';
+                banner.style.marginBottom = '15px';
+                banner.style.textAlign = 'center';
+                banner.style.cursor = 'pointer';
+                banner.onclick = cancelPasteMode;
+                const calendarContainer = document.querySelector('#calendarViewContainer .calendar-container');
+                if (calendarContainer) {
+                    calendarContainer.insertBefore(banner, calendarContainer.firstChild);
+                }
+            }
+            banner.innerHTML = '📋 Paste mode active - Click any date to paste the copied lesson. <span style="text-decoration:underline;">Click here to cancel.</span>';
+            banner.style.display = 'block';
+        }
+        
+        // Cancel paste mode
+        function cancelPasteMode() {
+            copiedLesson = null;
+            document.querySelectorAll('.calendar-day:not(.empty)').forEach(day => {
+                day.style.border = '';
+                day.style.cursor = '';
+                day.removeEventListener('click', pasteLessonToDate);
+            });
+            const banner = document.getElementById('pasteInstructionBanner');
+            if (banner) banner.remove();
+            showMessage('Paste mode cancelled.', 'success', 'lessonFormMessage');
+        }
+        
+        // Paste lesson to selected date
+        function pasteLessonToDate(event) {
+            if (!copiedLesson) return;
+            
+            const dayElement = event.currentTarget;
+            const day = dayElement.getAttribute('data-day');
+            if (!day) return;
+            
+            const year = currentCalendarYear;
+            const month = currentCalendarMonth;
+            
+            // Default time: 4:00 PM
+            let startHour = 16;
+            let startMinute = 0;
+            
+            const newStart = new Date(year, month, parseInt(day), startHour, startMinute);
+            const newEnd = new Date(newStart.getTime() + (copiedLesson.duration * 3600000));
+            
+            const startStr = `${newStart.getFullYear()}-${String(newStart.getMonth() + 1).padStart(2, '0')}-${String(newStart.getDate()).padStart(2, '0')}T${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
+            const endStr = `${newEnd.getFullYear()}-${String(newEnd.getMonth() + 1).padStart(2, '0')}-${String(newEnd.getDate()).padStart(2, '0')}T${String(newEnd.getHours()).padStart(2, '0')}:${String(newEnd.getMinutes()).padStart(2, '0')}`;
+            
+            const student = students.find(s => s.id === copiedLesson.studentId);
+            if (!student) {
+                showMessage('Student not found for copied lesson', 'error', 'lessonFormMessage');
+                cancelPasteMode();
+                return;
+            }
+            
+            const hours = copiedLesson.duration;
+            const earnings = student.rateType === 'hourly' ? hours * student.rateAmount : student.rateAmount;
+            
+            const newLesson = {
+                id: Date.now().toString(),
+                studentId: copiedLesson.studentId,
+                studentName: copiedLesson.studentName,
+                groupId: copiedLesson.groupId,
+                start: startStr.replace('T', ' ') + ':00',
+                end: endStr.replace('T', ' ') + ':00',
+                topic: copiedLesson.topic || '',
+                notes: copiedLesson.notes || '',
+                earnings: earnings,
+                hours: hours
+            };
+            
+            lessons.push(newLesson);
+            saveLessons();
+            renderCalendar();
+            updateLessonStats();
+            updateBackupStats();
+            
+            showMessage(`✅ Pasted "${copiedLesson.studentName}" lesson to ${day}/${month+1}/${year} at ${startHour}:${String(startMinute).padStart(2,'0')}`, 'success', 'lessonFormMessage');
+            cancelPasteMode();
+        }
+        
         function editLessonFromCalendar(lessonId, event) {
             event.stopPropagation();
             const lesson = lessons.find(l => l.id === lessonId);
@@ -296,29 +405,30 @@
                         <h3 style="margin-bottom:20px">✏️ Edit Lesson</h3>
                         <div class="form-group">
                             <label>Student</label>
-                            <select id="editLessonStudent" class="edit-lesson-field">
+                            <select id="editLessonStudent">
                                 ${students.map(s => `<option value="${s.id}" ${s.id === lesson.studentId ? 'selected' : ''}>${escapeHtml(s.name)} (${groups.find(g=>g.id===s.groupId)?.name || 'No Parent'})</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Date & Time</label>
-                            <input type="datetime-local" id="editLessonStart" class="edit-lesson-field" value="${lesson.start.replace(' ', 'T').substring(0,16)}">
+                            <input type="datetime-local" id="editLessonStart" value="${lesson.start.replace(' ', 'T').substring(0,16)}">
                         </div>
                         <div class="form-group">
                             <label>End Time</label>
-                            <input type="datetime-local" id="editLessonEnd" class="edit-lesson-field" value="${lesson.end.replace(' ', 'T').substring(0,16)}">
+                            <input type="datetime-local" id="editLessonEnd" value="${lesson.end.replace(' ', 'T').substring(0,16)}">
                         </div>
                         <div class="form-group">
                             <label>Topic Covered</label>
-                            <input type="text" id="editLessonTopic" class="edit-lesson-field" value="${escapeHtml(lesson.topic || '')}" placeholder="e.g., Algebra">
+                            <input type="text" id="editLessonTopic" value="${escapeHtml(lesson.topic || '')}" placeholder="e.g., Algebra">
                         </div>
                         <div class="form-group">
                             <label>Notes / Homework</label>
-                            <textarea id="editLessonNotes" rows="3" class="edit-lesson-field" placeholder="Homework assigned">${escapeHtml(lesson.notes || '')}</textarea>
+                            <textarea id="editLessonNotes" rows="3" placeholder="Homework assigned">${escapeHtml(lesson.notes || '')}</textarea>
                         </div>
                         <div class="button-group" style="margin-top:20px">
+                            <button onclick="copyLessonToClipboard('${lessonId}')" class="btn-primary" style="flex:1">📋 Copy Lesson</button>
                             <button onclick="saveLessonEdit('${lessonId}')" class="btn-primary" style="flex:1">💾 Save Changes</button>
-                            <button onclick="deleteLessonFromCalendar('${lessonId}')" class="delete-btn" style="flex:1">🗑️ Delete Lesson</button>
+                            <button onclick="deleteLessonFromCalendar('${lessonId}')" class="delete-btn" style="flex:1">🗑️ Delete</button>
                             <button onclick="closeEditLessonModal()" style="flex:0.5">Cancel</button>
                         </div>
                     </div>
@@ -466,7 +576,7 @@
             calendarHTML += `
                     </div>
                     <div class="calendar-legend">
-                        <div class="legend-item"><div class="legend-color"></div><span>Click any lesson to edit or delete</span></div>
+                        <div class="legend-item"><div class="legend-color"></div><span>Click any lesson to edit, copy, or delete</span></div>
                     </div>
                 </div>
             `;
@@ -503,40 +613,35 @@
             });
         }
         
-        function exportAllToCalendar() { 
+        function syncToCalendar() { 
             if(lessons.length === 0){ 
-                showMessage('No lessons to export','error','calendarFormMessage'); 
+                showMessage('No lessons to sync','error','calendarFormMessage'); 
                 return; 
-            } 
+            }
             
-            let icsContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Mr Lee Math Tuition//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:Tuition Schedule\n'; 
-            
-            for(const l of lessons){ 
-                const startDate = parseLocalDateTime(l.start);
-                const endDate = parseLocalDateTime(l.end);
-                
-                const formatICS = (date) => {
-                    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-                };
-                
-                const summary = l.studentName || 'Tuition Lesson';
-                const description = l.notes || '';
-                
-                icsContent += `BEGIN:VEVENT\n`;
-                icsContent += `UID:${l.id}@mrleemath.com\n`;
-                icsContent += `DTSTAMP:${formatICS(new Date())}\n`;
-                icsContent += `DTSTART:${formatICS(startDate)}\n`;
-                icsContent += `DTEND:${formatICS(endDate)}\n`;
-                icsContent += `SUMMARY:${escapeICS(summary)}\n`;
-                icsContent += `DESCRIPTION:${escapeICS(description)}\n`;
-                icsContent += `END:VEVENT\n`;
-            } 
-            
-            icsContent += 'END:VCALENDAR';
-            const encodedData = encodeURIComponent(icsContent);
-            const url = 'data:text/calendar;charset=utf8,' + encodedData;
-            window.location.href = url;
-            showMessage(`Opening Calendar with ${lessons.length} lessons...`, 'success', 'calendarFormMessage');
+            if(confirm('This will sync your current lessons to iPhone Calendar.\n\n- Old tuition events will be removed\n- Current lessons will be added\n\nContinue?')) {
+                let cancelContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Mr Lee Math Tuition//EN\nMETHOD:CANCEL\n';
+                for(const l of lessons){ 
+                    const startDate = parseLocalDateTime(l.start);
+                    const endDate = parseLocalDateTime(l.end);
+                    const formatICS = (date) => date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                    cancelContent += `BEGIN:VEVENT\nUID:${l.id}@mrleemath.com\nSEQUENCE:0\nDTSTAMP:${formatICS(new Date())}\nDTSTART:${formatICS(startDate)}\nDTEND:${formatICS(endDate)}\nSUMMARY:CANCELLED: ${l.studentName}\nSTATUS:CANCELLED\nEND:VEVENT\n`;
+                }
+                cancelContent += 'END:VCALENDAR';
+                window.open('data:text/calendar;charset=utf8,' + encodeURIComponent(cancelContent), '_blank');
+                setTimeout(() => {
+                    let icsContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Mr Lee Math Tuition//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:Tuition Schedule\n'; 
+                    for(const l of lessons){ 
+                        const startDate = parseLocalDateTime(l.start);
+                        const endDate = parseLocalDateTime(l.end);
+                        const formatICS = (date) => date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                        icsContent += `BEGIN:VEVENT\nUID:${l.id}@mrleemath.com\nDTSTAMP:${formatICS(new Date())}\nDTSTART:${formatICS(startDate)}\nDTEND:${formatICS(endDate)}\nSUMMARY:${escapeICS(l.studentName)}\nDESCRIPTION:${escapeICS(l.notes||'')}\nEND:VEVENT\n`;
+                    } 
+                    icsContent += 'END:VCALENDAR';
+                    window.location.href = 'data:text/calendar;charset=utf8,' + encodeURIComponent(icsContent);
+                    showMessage(`✅ Synced ${lessons.length} lessons to Calendar!`, 'success', 'calendarFormMessage');
+                }, 800);
+            }
         }
         
         async function generateAnalysis() { const fd=document.getElementById('analysisFromDate').value; const td=document.getElementById('analysisToDate').value; if(!fd||!td){ showMessage('Select date range','error','analysisFormMessage'); return; } const filtered=lessons.filter(l=>{ const ld=parseLocalDateTime(l.start); const fdDate=new Date(fd); const tdDate=new Date(td); return ld>=fdDate&&ld<=tdDate; }); if(filtered.length===0){ showMessage('No lessons found','error','analysisFormMessage'); return; } const groupTotals={}, groupStatus={}, studentTotals={}; let total=0, hours=0; for(const l of filtered){ const g=groups.find(g=>g.id===l.groupId); const gn=g?.name||'Unknown'; groupTotals[gn]=(groupTotals[gn]||0)+l.earnings; groupStatus[gn]=g?.paymentStatus||'unpaid'; studentTotals[l.studentName]={group:gn,earnings:(studentTotals[l.studentName]?.earnings||0)+l.earnings,hours:(studentTotals[l.studentName]?.hours||0)+l.hours,lessons:(studentTotals[l.studentName]?.lessons||0)+1}; total+=l.earnings; hours+=l.hours; } let html=`<div id="analysisContainer" class="analysis-container"><div class="analysis-header"><div class="analysis-title">FEE ANALYSIS & PAYMENT REPORT</div><div class="analysis-dates">Period: ${formatDateForDisplay(fd)} to ${formatDateForDisplay(td)}</div></div><div class="summary-card"><div class="summary-number">$${total.toFixed(2)}</div><div class="summary-label">Total Fees Earned</div><div>📊 ${hours.toFixed(1)} total hours | 📚 ${filtered.length} lessons</div></div><h3>By Parent</h3><table class="analysis-table"><thead><tr><th>Parent</th><th>Total</th><th>%</th><th>Status</th></tr></thead><tbody>`; for(const [gn,amt] of Object.entries(groupTotals).sort((a,b)=>b[1]-a[1])){ const pct=(amt/total*100).toFixed(1); const st=groupStatus[gn]; const cls=st==='paid'?'status-paid':(st==='invoiced'?'status-invoiced':'status-unpaid'); const txt=st==='paid'?'✅ Paid':(st==='invoiced'?'📄 Invoiced':'⚠️ Unpaid'); html+=`<tr><td style="padding:8px">${escapeHtml(gn)}</td><td style="padding:8px">$${amt.toFixed(2)}</td><td style="padding:8px">${pct}%</td><td style="padding:8px"><span class="payment-status-badge ${cls}">${txt}</span>NonNull`; } html+=`</tbody>\\n<h3>By Student</h3><table class="analysis-table"><thead><tr><th>Student</th><th>Parent</th><th>Hours</th><th>Lessons</th><th>Total</th></tr></thead><tbody>`; for(const [sn,data] of Object.entries(studentTotals).sort((a,b)=>b[1].earnings-a[1].earnings)){ html+=`<tr><td style="padding:8px">${escapeHtml(sn)}</td><td style="padding:8px">${escapeHtml(data.group)}</td><td style="padding:8px">${data.hours.toFixed(1)}</td><td style="padding:8px">${data.lessons}</td><td style="padding:8px">$${data.earnings.toFixed(2)}</td>`; } html+=`</tbody>\\n<div class="analysis-total"><strong>GRAND TOTAL: $${total.toFixed(2)}</strong></div><div style="font-size:0.7rem;text-align:center;margin-top:20px">Generated ${new Date().toLocaleDateString()}</div></div>`; document.getElementById('analysisPreview').innerHTML=html; document.getElementById('analysisPreview').style.display='block'; document.getElementById('shareAnalysisBtn').style.display='block'; currentAnalysisElement=document.getElementById('analysisContainer'); showMessage('Report generated!','success','analysisFormMessage'); }
